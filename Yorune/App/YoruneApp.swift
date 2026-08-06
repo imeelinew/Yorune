@@ -8,6 +8,7 @@ struct YoruneApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(appModel)
+                .environment(\.locale, appModel.settings.language.locale)
                 .task {
                     await appModel.library.reload()
                 }
@@ -15,7 +16,7 @@ struct YoruneApp: App {
         .defaultSize(width: 1_080, height: 720)
         .commands {
             CommandGroup(replacing: .appSettings) {
-                Button("设置") {
+                Button("Settings") {
                     appModel.showSettings()
                 }
                 .keyboardShortcut(",", modifiers: .command)

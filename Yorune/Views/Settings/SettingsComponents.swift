@@ -38,3 +38,9 @@ struct PreferencesRow<Content: View>: View {
         }
     }
 }
+
+struct PreferencesDivider: View {
+    var body: some View {
+        Divider()
+    }
+}

@@ -13,15 +13,15 @@ struct AlbumGridView: View {
             switch library.state {
             case .needsConfiguration:
                 VStack(spacing: 16) {
-                    Text("请先连接服务器")
+                    Text("Connect a server in Settings")
                         .font(.title3)
-                    Button("打开设置", action: openSettings)
+                    Button("Open Settings", action: openSettings)
                 }
             case .loading:
-                ProgressView("正在载入")
+                ProgressView("Loading")
             case .loaded:
                 if library.albums.isEmpty {
-                    Text("没有专辑")
+                    Text("No Albums")
                         .font(.title3)
                 } else {
                     ScrollView {
@@ -35,17 +35,17 @@ struct AlbumGridView: View {
                 }
             case .failed:
                 VStack(spacing: 16) {
-                    Text("无法载入专辑")
+                    Text("Unable to Load Albums")
                         .font(.title3)
-                    Button("重试") {
+                    Button("Retry") {
                         Task {
                             await library.reload()
                         }
                     }
-                    Button("打开设置", action: openSettings)
+                    Button("Open Settings", action: openSettings)
                 }
             }
         }
-        .navigationTitle("专辑")
+        .navigationTitle("Albums")
     }
 }

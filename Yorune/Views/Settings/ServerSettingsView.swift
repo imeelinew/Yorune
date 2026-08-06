@@ -12,26 +12,26 @@ struct ServerSettingsView: View {
 
     var body: some View {
         PreferencesForm {
-            PreferencesRow(label: "服务器地址") {
-                TextField("服务器地址", text: $serverURL)
+            PreferencesRow(label: "Server URL") {
+                TextField("Server URL", text: $serverURL)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 280)
             }
 
-            PreferencesRow(label: "用户名") {
-                TextField("用户名", text: $username)
+            PreferencesRow(label: "Username") {
+                TextField("Username", text: $username)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 280)
             }
 
-            PreferencesRow(label: "密码") {
-                SecureField("密码", text: $password)
+            PreferencesRow(label: "Password") {
+                SecureField("Password", text: $password)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 280)
             }
 
             PreferencesRow(label: "") {
-                Button("保存并连接") {
+                Button("Save and Connect") {
                     connect()
                 }
                 .disabled(isConnecting || !hasInput)
@@ -41,7 +41,7 @@ struct ServerSettingsView: View {
         .alert(item: $result) { result in
             Alert(
                 title: Text(result.title),
-                dismissButton: .default(Text("好"))
+                dismissButton: .default(Text("OK"))
             )
         }
     }
@@ -86,10 +86,10 @@ private enum ConnectionResult: String, Identifiable {
 
     var id: String { rawValue }
 
-    var title: String {
+    var title: LocalizedStringKey {
         switch self {
-        case .success: "连接成功"
-        case .failure: "连接失败"
+        case .success: "Connected"
+        case .failure: "Connection Failed"
         }
     }
 }

@@ -9,7 +9,7 @@ struct SidebarView: View {
 
     var body: some View {
         List(selection: $selection) {
-            Label("专辑", systemImage: "square.stack")
+            Label("Albums", systemImage: "square.stack")
                 .tag(LibrarySection.albums)
         }
         .listStyle(.sidebar)
