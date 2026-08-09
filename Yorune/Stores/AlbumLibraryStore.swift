@@ -13,6 +13,7 @@ final class AlbumLibraryStore: ObservableObject {
     @Published private(set) var state: State = .needsConfiguration
 
     private let configurationStore: ServerConfigurationStore
+    private var songsByAlbumID: [String: [Song]] = [:]
 
     init(configurationStore: ServerConfigurationStore) {
         self.configurationStore = configurationStore
@@ -39,12 +40,40 @@ final class AlbumLibraryStore: ObservableObject {
         do {
             let albums = try await NavidromeClient(configuration: configuration).fetchAlbums()
             try configurationStore.save(configuration)
+            songsByAlbumID.removeAll()
             self.albums = albums
             state = .loaded
         } catch {
             state = .failed
             throw error
         }
+    }
+
+    func fetchSongs(in album: Album) async throws -> [Song] {
+        if let songs = songsByAlbumID[album.id] {
+            return songs
+        }
+        guard let configuration = configurationStore.configuration else {
+            throw ServerConfigurationError.invalid
+        }
+
+        let songs = try await NavidromeClient(configuration: configuration)
+            .fetchSongs(in: album.id)
+            .map { song in
+                Song(
+                    id: song.id,
+                    title: song.title,
+                    artist: song.artist,
+                    albumID: song.albumID,
+                    albumTitle: song.albumTitle,
+                    duration: song.duration,
+                    trackNumber: song.trackNumber,
+                    discNumber: song.discNumber,
+                    artworkURL: album.artworkURL
+                )
+            }
+        songsByAlbumID[album.id] = songs
+        return songs
     }
 
     private func load(using configuration: ServerConfiguration) async {

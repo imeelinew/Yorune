@@ -12,6 +12,10 @@ struct AboutSettingsView: View {
         (
             "MacAppSettingsUI",
             URL(string: "https://github.com/usagimaru/MacAppSettingsUI")!
+        ),
+        (
+            "Kaset",
+            URL(string: "https://github.com/sozercan/kaset")!
         )
     ]
 

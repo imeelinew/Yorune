@@ -3,6 +3,7 @@ import SwiftUI
 struct ServerSettingsView: View {
     @ObservedObject var configurationStore: ServerConfigurationStore
     @ObservedObject var library: AlbumLibraryStore
+    @ObservedObject var playback: PlaybackController
 
     @State private var serverURL = ""
     @State private var username = ""
@@ -65,6 +66,7 @@ struct ServerSettingsView: View {
             username: username,
             password: password
         )
+        let previousConfiguration = configurationStore.configuration
 
         isConnecting = true
         Task {
@@ -72,6 +74,13 @@ struct ServerSettingsView: View {
 
             do {
                 try await library.connect(using: configuration)
+                if let configuration = configuration.normalized,
+                   (
+                       previousConfiguration?.serverURL != configuration.serverURL
+                           || previousConfiguration?.username != configuration.username
+                   ) {
+                    playback.stopAndClearQueue()
+                }
                 result = .success
             } catch {
                 result = .failure

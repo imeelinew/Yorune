@@ -8,6 +8,7 @@ final class YoruneSettingsWindowController {
     private let settings: AppSettings
     private let configurationStore: ServerConfigurationStore
     private let library: AlbumLibraryStore
+    private let playback: PlaybackController
 
     private var controller: SettingsWindowController?
     private var builtLanguage: AppLanguage?
@@ -16,11 +17,13 @@ final class YoruneSettingsWindowController {
     init(
         settings: AppSettings,
         configurationStore: ServerConfigurationStore,
-        library: AlbumLibraryStore
+        library: AlbumLibraryStore,
+        playback: PlaybackController
     ) {
         self.settings = settings
         self.configurationStore = configurationStore
         self.library = library
+        self.playback = playback
 
         languageObserver = settings.$language
             .dropFirst()
@@ -82,7 +85,8 @@ final class YoruneSettingsWindowController {
                 case .server:
                     ServerSettingsView(
                         configurationStore: configurationStore,
-                        library: library
+                        library: library,
+                        playback: playback
                     )
                 case .about:
                     AboutSettingsView(settings: settings)

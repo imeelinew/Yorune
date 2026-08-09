@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Yorune 核心功能计划</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f4f4f1;
+      --surface: rgba(255, 255, 255, 0.82);
+      --surface-strong: #ffffff;
+      --text: #171715;
+      --muted: #6c6c67;
+      --line: rgba(23, 23, 21, 0.11);
+      --accent: #5b5bd6;
+      --accent-soft: rgba(91, 91, 214, 0.11);
+      --done: #237a4b;
+      --shadow: 0 16px 50px rgba(30, 30, 25, 0.07);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121211;
+        --surface: rgba(31, 31, 29, 0.82);
+        --surface-strong: #20201e;
+        --text: #f2f2ed;
+        --muted: #aaa9a2;
+        --line: rgba(255, 255, 255, 0.11);
+        --accent: #a6a6ff;
+        --accent-soft: rgba(166, 166, 255, 0.12);
+        --done: #6ed59b;
+        --shadow: 0 16px 50px rgba(0, 0, 0, 0.25);
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
+    }
+
+    main {
+      width: min(1080px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 72px 0 96px;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 12px; font-size: clamp(38px, 7vw, 72px); line-height: 1.02; letter-spacing: -0.045em; }
+    h2 { margin-bottom: 20px; font-size: 24px; letter-spacing: -0.02em; }
+    h3 { margin-bottom: 6px; font-size: 16px; }
+    p { color: var(--muted); }
+
+    .eyebrow {
+      margin-bottom: 14px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .lead { max-width: 720px; margin-bottom: 0; font-size: 18px; }
+
+    .hero, section {
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .hero { padding: clamp(28px, 6vw, 58px); }
+    section { margin-top: 22px; padding: clamp(24px, 4vw, 38px); }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 34px;
+    }
+
+    .summary article, .phase, .reference {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--surface-strong);
+    }
+
+    .summary article { padding: 18px; }
+    .summary strong { display: block; margin-bottom: 4px; font-size: 19px; }
+    .summary span { color: var(--muted); font-size: 13px; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 190px 1fr;
+      min-height: 340px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--surface-strong);
+    }
+
+    .sidebar { padding: 22px 16px; border-right: 1px solid var(--line); }
+    .sidebar .selected { padding: 8px 10px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); font-weight: 650; }
+    .content { display: grid; grid-template-rows: auto 1fr auto; }
+    .toolbar, .player { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; }
+    .toolbar { border-bottom: 1px solid var(--line); }
+    .player { border-top: 1px solid var(--line); }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px; }
+    .cover { aspect-ratio: 1; border-radius: 9px; background: linear-gradient(145deg, var(--accent-soft), var(--line)); }
+    .album-name { margin-top: 7px; height: 9px; width: 72%; border-radius: 5px; background: var(--line); }
+    .player-controls { color: var(--accent); letter-spacing: 8px; }
+
+    .phases { display: grid; gap: 12px; }
+    .phase { display: grid; grid-template-columns: 82px 1fr auto; gap: 18px; align-items: start; padding: 18px; }
+    .phase-number { color: var(--accent); font-weight: 750; }
+    .phase p { margin: 3px 0 0; }
+    .tag { padding: 4px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; white-space: nowrap; }
+    .tag.done { color: var(--done); background: color-mix(in srgb, var(--done) 12%, transparent); }
+
+    .references { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .reference { padding: 18px; }
+    .reference p { margin-bottom: 0; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-size: 12px; font-weight: 650; }
+    tr:last-child td { border-bottom: 0; }
+
+    .rules { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 22px; margin: 0; padding-left: 20px; }
+    .rules li { padding-left: 4px; }
+    code { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+
+    footer { padding-top: 26px; color: var(--muted); text-align: center; font-size: 12px; }
+
+    @media (max-width: 760px) {
+      main { width: min(100% - 24px, 1080px); padding-top: 24px; }
+      .summary, .references, .rules { grid-template-columns: 1fr; }
+      .layout { grid-template-columns: 120px 1fr; }
+      .grid { grid-template-columns: repeat(2, 1fr); }
+      .phase { grid-template-columns: 64px 1fr; }
+      .phase .tag { grid-column: 2; justify-self: start; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="hero">
+      <div class="eyebrow">Yorune Core Roadmap · 2026-08-07</div>
+      <h1>先完成音乐播放闭环</h1>
+      <p class="lead">围绕专辑浏览、曲目列表、在线播放和播放队列开发，保持原生 macOS 结构，不扩张成第二个 Amperfy</p>
+
+      <div class="summary">
+        <article><strong>一个入口</strong><span>侧栏暂时只保留专辑</span></article>
+        <article><strong>四步闭环</strong><span>专辑 → 曲目 → 播放 → 队列</span></article>
+        <article><strong>原生控件</strong><span>SwiftUI 与系统组件优先</span></article>
+      </div>
+    </header>
+
+    <section>
+      <h2>目标界面</h2>
+      <div class="layout" aria-label="Yorune 主窗口规划示意">
+        <aside class="sidebar">
+          <div class="eyebrow">资料库</div>
+          <div class="selected">▣ 专辑</div>
+        </aside>
+        <div class="content">
+          <div class="toolbar"><strong>专辑</strong><span>⌕ 搜索</span></div>
+          <div class="grid">
+            <div><div class="cover"></div><div class="album-name"></div></div>
+            <div><div class="cover"></div><div class="album-name"></div></div>
+            <div><div class="cover"></div><div class="album-name"></div></div>
+            <div><div class="cover"></div><div class="album-name"></div></div>
+          </div>
+          <div class="player"><strong>当前曲目</strong><span class="player-controls">◀︎ ▶︎ ▶|</span><span>音量</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>开发计划</h2>
+      <div class="phases">
+        <article class="phase">
+          <div class="phase-number">阶段 0</div>
+          <div><h3>连接与专辑骨架</h3><p>服务器配置、凭据保存、真实专辑标题与封面、语言、外观、登录时启动</p></div>
+          <span class="tag done">已有</span>
+        </article>
+        <article class="phase">
+          <div class="phase-number">阶段 1</div>
+          <div><h3>专辑资料库</h3><p>增量加载、缓存、失败重试、原生搜索与基础排序，保持方形封面加单行标题</p></div>
+          <span class="tag">下一步</span>
+        </article>
+        <article class="phase">
+          <div class="phase-number">阶段 2</div>
+          <div><h3>专辑详情</h3><p>点击专辑进入详情，展示封面、专辑名、系统播放按钮和曲目列表，支持双击曲目播放</p></div>
+          <span class="tag">核心</span>
+        </article>
+        <article class="phase">
+          <div class="phase-number">阶段 3</div>
+          <div><h3>播放引擎</h3><p>Navidrome 流媒体地址、播放暂停、上一首、下一首、进度跳转、音量和错误恢复</p></div>
+          <span class="tag">核心</span>
+        </article>
+        <article class="phase">
+          <div class="phase-number">阶段 4</div>
+          <div><h3>迷你播放器与队列</h3><p>窗口底部固定播放栏，展示必要信息与系统按钮，队列使用独立面板，支持调整顺序</p></div>
+          <span class="tag">核心</span>
+        </article>
+        <article class="phase">
+          <div class="phase-number">阶段 5</div>
+          <div><h3>macOS 完整体验</h3><p>媒体键、菜单命令、键盘快捷键、播放状态恢复、系统现在播放信息与辅助功能</p></div>
+          <span class="tag">收尾</span>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>UI 设计规则</h2>
+      <ul class="rules">
+        <li>主结构使用 <code>NavigationSplitView</code></li>
+        <li>专辑区使用 <code>LazyVGrid</code></li>
+        <li>曲目区优先使用原生 <code>Table</code> 或 <code>List</code></li>
+        <li>搜索使用 <code>searchable</code> 与系统工具栏</li>
+        <li>按钮、菜单、进度、音量均使用系统控件</li>
+        <li>不绘制自定义按钮、卡片材质和窗口装饰</li>
+        <li>界面文案不使用句号</li>
+        <li>不添加灰色二级描述，确有必要时先征得同意</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>如何参考 Amperfy</h2>
+      <div class="references">
+        <article class="reference">
+          <h3>专辑网格</h3>
+          <p>参考 <code>AlbumsCollectionVC</code> 与 <code>AlbumCollectionCell</code> 的自适应方形封面和清晰标题，删除副标题、字母索引、筛选范围和批量播放入口</p>
+        </article>
+        <article class="reference">
+          <h3>专辑详情</h3>
+          <p>参考 <code>AlbumDetailVC</code> 的封面、播放操作与曲目层级，改为 macOS 原生布局，压缩菜单与附加元数据</p>
+        </article>
+        <article class="reference">
+          <h3>持续播放入口</h3>
+          <p>参考 macOS 截图和 <code>PopupPlayerVC</code> 的底部常驻思路，只保留当前曲目、进度与基础控制</p>
+        </article>
+        <article class="reference">
+          <h3>参考边界</h3>
+          <p>参考信息架构、交互行为和数据请求，不复制 Amperfy 的 GPL 源码、素材或移动端视觉实现</p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>范围控制</h2>
+      <table>
+        <thead><tr><th>本轮优先</th><th>暂不开发</th><th>进入条件</th></tr></thead>
+        <tbody>
+          <tr><td>专辑、曲目、播放、队列</td><td>艺术家、歌单、播客、电台</td><td>核心播放闭环稳定后再讨论</td></tr>
+          <tr><td>在线流媒体与轻量缓存</td><td>完整离线下载系统</td><td>确认缓存策略与磁盘管理后</td></tr>
+          <tr><td>必要的专辑与曲目信息</td><td>评分、评论、推荐、社交信息</td><td>用户明确提出真实需求后</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>每阶段验收</h2>
+      <table>
+        <tbody>
+          <tr><td>功能</td><td>在真实 Navidrome 数据上完成主路径</td></tr>
+          <tr><td>界面</td><td>先提交可见界面供确认，再扩展下一阶段</td></tr>
+          <tr><td>稳定性</td><td>覆盖加载、空数据、断网、凭据失效和流播放失败</td></tr>
+          <tr><td>工程</td><td>保持标准 Xcode 工程，不修改 Scheme，不引入构建脚本</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>本文件用于确认方向，获准后再开始核心功能实现</footer>
+  </main>
+</body>
+</html>

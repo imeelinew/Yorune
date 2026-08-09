@@ -21,6 +21,33 @@ struct YoruneApp: App {
                 }
                 .keyboardShortcut(",", modifiers: .command)
             }
+
+            CommandMenu("Playback") {
+                Button("Play or Pause") {
+                    appModel.playback.togglePlayback()
+                }
+                .disabled(appModel.playback.currentSong == nil)
+
+                Button("Previous") {
+                    appModel.playback.playPrevious()
+                }
+                .keyboardShortcut(.leftArrow, modifiers: .command)
+                .disabled(!appModel.playback.canGoPrevious)
+
+                Button("Next") {
+                    appModel.playback.playNext()
+                }
+                .keyboardShortcut(.rightArrow, modifiers: .command)
+                .disabled(!appModel.playback.canGoNext)
+
+                Divider()
+
+                Button("Queue") {
+                    appModel.playback.toggleQueueInspector()
+                }
+                .keyboardShortcut("u", modifiers: [.command, .option])
+                .disabled(appModel.playback.currentSong == nil)
+            }
         }
     }
 }

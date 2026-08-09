@@ -3,8 +3,15 @@ import SwiftUI
 
 struct AlbumArtworkView: View {
     let url: URL?
+    let cornerRadius: CGFloat
 
     @State private var image: NSImage?
+
+    private static let imageCache: NSCache<NSURL, NSImage> = {
+        let cache = NSCache<NSURL, NSImage>()
+        cache.countLimit = 500
+        return cache
+    }()
 
     private static let session: URLSession = {
         let configuration = URLSessionConfiguration.ephemeral
@@ -12,6 +19,14 @@ struct AlbumArtworkView: View {
         configuration.urlCache = nil
         return URLSession(configuration: configuration)
     }()
+
+    init(url: URL?, cornerRadius: CGFloat = 10) {
+        self.url = url
+        self.cornerRadius = cornerRadius
+        _image = State(initialValue: url.flatMap {
+            Self.imageCache.object(forKey: $0 as NSURL)
+        })
+    }
 
     var body: some View {
         ZStack {
@@ -29,25 +44,36 @@ struct AlbumArtworkView: View {
             }
         }
         .clipped()
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         .task(id: url) {
             await loadImage()
         }
     }
 
     private func loadImage() async {
+        guard let url else {
+            image = nil
+            return
+        }
+        if let cachedImage = Self.imageCache.object(forKey: url as NSURL) {
+            image = cachedImage
+            return
+        }
         image = nil
-        guard let url else { return }
 
         do {
             let (data, response) = try await Self.session.data(from: url)
-            guard let response = response as? HTTPURLResponse,
+            guard !Task.isCancelled,
+                  self.url == url,
+                  let response = response as? HTTPURLResponse,
                   (200 ... 299).contains(response.statusCode) else {
                 return
             }
-            image = NSImage(data: data)
+            guard let loadedImage = NSImage(data: data) else { return }
+            Self.imageCache.setObject(loadedImage, forKey: url as NSURL)
+            image = loadedImage
         } catch {
-            image = nil
+            return
         }
     }
 }

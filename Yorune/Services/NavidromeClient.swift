@@ -66,6 +66,44 @@ actor NavidromeClient {
         return albums
     }
 
+    func fetchSongs(in albumID: String) async throws -> [Song] {
+        let url = try makeURL(
+            action: "getAlbum",
+            queryItems: [
+                URLQueryItem(name: "id", value: albumID),
+                URLQueryItem(name: "f", value: "json")
+            ]
+        )
+        let data = try await data(from: url)
+        let envelope = try JSONDecoder().decode(SubsonicEnvelope.self, from: data)
+
+        guard envelope.response.status == "ok",
+              let album = envelope.response.album else {
+            throw NavidromeError.server
+        }
+
+        return (album.songs ?? []).map { song in
+            Song(
+                id: song.id,
+                title: song.title,
+                artist: song.artist ?? "",
+                albumID: albumID,
+                albumTitle: song.album ?? album.name ?? "",
+                duration: song.duration ?? 0,
+                trackNumber: song.track,
+                discNumber: song.discNumber,
+                artworkURL: nil
+            )
+        }
+    }
+
+    func streamURL(for songID: String) throws -> URL {
+        try makeURL(
+            action: "stream",
+            queryItems: [URLQueryItem(name: "id", value: songID)]
+        )
+    }
+
     private func data(from url: URL) async throws -> Data {
         let (data, response) = try await session.data(from: url)
         guard let response = response as? HTTPURLResponse,
@@ -119,10 +157,12 @@ private struct SubsonicEnvelope: Decodable {
 private struct SubsonicResponse: Decodable {
     let status: String
     let albumList: SubsonicAlbumList?
+    let album: SubsonicAlbumDetail?
 
     enum CodingKeys: String, CodingKey {
         case status
         case albumList = "albumList2"
+        case album
     }
 }
 
@@ -138,6 +178,26 @@ private struct SubsonicAlbum: Decodable {
     let id: String
     let name: String
     let coverArt: String?
+}
+
+private struct SubsonicAlbumDetail: Decodable {
+    let name: String?
+    let songs: [SubsonicSong]?
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case songs = "song"
+    }
+}
+
+private struct SubsonicSong: Decodable {
+    let id: String
+    let title: String
+    let artist: String?
+    let album: String?
+    let duration: Double?
+    let track: Int?
+    let discNumber: Int?
 }
 
 enum NavidromeError: Error {
