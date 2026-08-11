@@ -15,6 +15,7 @@ final class AppModel: ObservableObject {
     let settings: AppSettings
     let configurationStore: ServerConfigurationStore
     let library: AlbumLibraryStore
+    let downloads: DownloadStore
     let playback: PlaybackController
 
     private var cancellables = Set<AnyCancellable>()
@@ -29,10 +30,15 @@ final class AppModel: ObservableObject {
     init() {
         let settings = AppSettings()
         let configurationStore = ServerConfigurationStore()
+        let downloads = DownloadStore(configurationStore: configurationStore)
         self.settings = settings
         self.configurationStore = configurationStore
         self.library = AlbumLibraryStore(configurationStore: configurationStore)
-        self.playback = PlaybackController(configurationStore: configurationStore)
+        self.downloads = downloads
+        self.playback = PlaybackController(
+            configurationStore: configurationStore,
+            downloads: downloads
+        )
 
         settings.objectWillChange
             .sink { [weak self] in
@@ -82,6 +88,7 @@ final class PlaybackController: ObservableObject {
     @Published var failure: PlaybackFailure?
 
     private let configurationStore: ServerConfigurationStore
+    private let downloads: DownloadStore
     private var player: AVPlayer?
     private var currentIndex: Int?
     private var loadingTask: Task<Void, Never>?
@@ -141,8 +148,12 @@ final class PlaybackController: ObservableObject {
         return Array(queue[(currentIndex + 1)...])
     }
 
-    init(configurationStore: ServerConfigurationStore) {
+    init(
+        configurationStore: ServerConfigurationStore,
+        downloads: DownloadStore
+    ) {
         self.configurationStore = configurationStore
+        self.downloads = downloads
         let defaults = UserDefaults.standard
         let savedVolume = defaults.object(forKey: DefaultsKey.volume) as? Double ?? 1
         self.volume = savedVolume.isFinite ? min(max(savedVolume, 0), 1) : 1
@@ -461,13 +472,14 @@ final class PlaybackController: ObservableObject {
             playbackLogger.error("Playback queue position is invalid")
             return
         }
-        guard configurationStore.configuration != nil else {
+        let song = queue[currentIndex]
+        guard downloads.localURL(for: song.id) != nil
+                || configurationStore.configuration != nil else {
             playbackLogger.error("Server configuration is unavailable")
             failure = .unableToPlay
             return
         }
 
-        let song = queue[currentIndex]
         currentSong = song
         elapsedTime = time
         duration = song.duration
@@ -484,14 +496,19 @@ final class PlaybackController: ObservableObject {
         persistPlaybackState()
         loadingTask = Task { [weak self] in
             guard let self else { return }
-            guard let configuration = configurationStore.configuration else {
-                handlePlaybackFailure()
-                return
-            }
 
             do {
-                let url = try await NavidromeClient(configuration: configuration)
-                    .streamURL(for: song.id)
+                let url: URL
+                if let localURL = downloads.localURL(for: song.id) {
+                    url = localURL
+                } else {
+                    guard let configuration = configurationStore.configuration else {
+                        handlePlaybackFailure()
+                        return
+                    }
+                    url = try await NavidromeClient(configuration: configuration)
+                        .streamURL(for: song.id)
+                }
                 guard !Task.isCancelled else { return }
 
                 let item = AVPlayerItem(url: url)

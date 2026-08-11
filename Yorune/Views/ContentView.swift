@@ -8,14 +8,15 @@ struct ContentView: View {
     var body: some View {
         LibraryWindowView(
             library: appModel.library,
+            downloads: appModel.downloads,
             playback: appModel.playback,
             openSettings: appModel.showSettings
         )
         .background {
             PlaybackKeyboardShortcutMonitor {
-                guard appModel.playback.currentSong != nil else { return false }
-                appModel.playback.togglePlayback()
-                return true
+                if appModel.playback.currentSong != nil {
+                    appModel.playback.togglePlayback()
+                }
             }
             .frame(width: 0, height: 0)
         }
@@ -25,6 +26,7 @@ struct ContentView: View {
 
 private struct LibraryWindowView: View {
     let library: AlbumLibraryStore
+    let downloads: DownloadStore
     let playback: PlaybackController
     let openSettings: () -> Void
 
@@ -38,6 +40,7 @@ private struct LibraryWindowView: View {
             } detail: {
                 LibraryDetailView(
                     library: library,
+                    downloads: downloads,
                     playback: playback,
                     openSettings: openSettings
                 )
@@ -68,6 +71,7 @@ private struct PlaybackQueueHost: View {
 
 private struct LibraryDetailView: View {
     @ObservedObject var library: AlbumLibraryStore
+    @ObservedObject var downloads: DownloadStore
     @ObservedObject var playback: PlaybackController
     let openSettings: () -> Void
     @State private var navigationPath: [Album] = []
@@ -76,6 +80,7 @@ private struct LibraryDetailView: View {
         NavigationStack(path: $navigationPath) {
             AlbumGridView(
                 library: library,
+                downloads: downloads,
                 playback: playback,
                 openSettings: openSettings
             )
@@ -93,6 +98,11 @@ private struct LibraryDetailView: View {
                 playback.dismissFailure()
             }
         }
+        .alert("Unable to Download", isPresented: downloadFailurePresented) {
+            Button("OK", role: .cancel) {
+                downloads.dismissFailure()
+            }
+        }
     }
 
     private var failurePresented: Binding<Bool> {
@@ -101,6 +111,17 @@ private struct LibraryDetailView: View {
             set: { isPresented in
                 if !isPresented {
                     playback.dismissFailure()
+                }
+            }
+        )
+    }
+
+    private var downloadFailurePresented: Binding<Bool> {
+        Binding(
+            get: { downloads.failure != nil },
+            set: { isPresented in
+                if !isPresented {
+                    downloads.dismissFailure()
                 }
             }
         )
@@ -297,16 +318,8 @@ struct PlayerBar: View {
                     .font(.system(size: 15))
                     .contentTransition(.symbolEffect(.replace))
             }
-            .overlay(alignment: .top) {
-                if isVolumeVisible {
-                    PlayerVolumeOverlay(playback: playback)
-                        .offset(y: -176)
-                        .transition(
-                            .scale(scale: 0.94, anchor: .bottom)
-                                .combined(with: .opacity)
-                        )
-                        .zIndex(3)
-                }
+            .popover(isPresented: $isVolumeVisible, arrowEdge: .bottom) {
+                PlayerVolumePopover(playback: playback)
             }
         }
     }
@@ -537,149 +550,29 @@ private struct PlayerBarIconButtonStyle: ButtonStyle {
     }
 }
 
-private struct PlayerVolumeOverlay: View {
+private struct PlayerVolumePopover: View {
     @ObservedObject var playback: PlaybackController
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        Group {
-            if #available(macOS 26.0, *) {
-                volumeContent
-                    .glassEffect(.regular.interactive(), in: Capsule())
-            } else {
-                volumeContent
-                    .background(.ultraThinMaterial, in: Capsule())
-            }
-        }
-        .shadow(
-            color: colorScheme == .dark
-                ? .black.opacity(0.36)
-                : .black.opacity(0.18),
-            radius: 14,
-            y: 5
-        )
-    }
+        HStack(spacing: 10) {
+            Image(systemName: "speaker.fill")
+                .foregroundStyle(.secondary)
 
-    private var volumeContent: some View {
-        VStack(spacing: 10) {
-            Image(systemName: volumeSymbol)
-                .font(.system(size: 15))
-                .frame(width: 16, height: 16)
-
-            PlayerBarVerticalSlider(
+            Slider(
                 value: Binding(
                     get: { playback.volume },
                     set: playback.setVolume
                 ),
-                accent: YoruneStyle.accent,
-                accessibilityLabel: "Volume"
+                in: 0 ... 1
             )
+            .accessibilityLabel("Volume")
+
+            Image(systemName: "speaker.wave.3.fill")
+                .foregroundStyle(.secondary)
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 16)
-        .frame(width: 46, height: 168)
-    }
-
-    private var volumeSymbol: String {
-        switch playback.volume {
-        case 0:
-            "speaker.slash.fill"
-        case ..<0.34:
-            "speaker.wave.1.fill"
-        case ..<0.67:
-            "speaker.wave.2.fill"
-        default:
-            "speaker.wave.3.fill"
-        }
-    }
-}
-
-private struct PlayerBarVerticalSlider: View {
-    @Binding var value: Double
-    let accent: Color
-    let accessibilityLabel: LocalizedStringKey
-
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var isDragging = false
-    @State private var isHovering = false
-
-    private var clampedValue: CGFloat {
-        CGFloat(min(max(0, value), 1))
-    }
-
-    var body: some View {
-        GeometryReader { geometry in
-            let height = geometry.size.height
-            let fillHeight = height * clampedValue
-            let thumbDiameter: CGFloat = isDragging ? 14 : (isHovering ? 12 : 10)
-
-            ZStack(alignment: .bottom) {
-                Capsule()
-                    .fill(trackColor)
-                    .frame(width: 4)
-
-                Capsule()
-                    .fill(accent)
-                    .frame(width: 4, height: fillHeight)
-
-                Circle()
-                    .fill(accent)
-                    .frame(width: thumbDiameter, height: thumbDiameter)
-                    .offset(
-                        y: -min(
-                            max(0, fillHeight - thumbDiameter / 2),
-                            max(0, height - thumbDiameter)
-                        )
-                    )
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .animation(.easeInOut(duration: 0.15), value: isHovering)
-            .animation(
-                .spring(response: 0.24, dampingFraction: 0.72),
-                value: isDragging
-            )
-            .padding(8)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { drag in
-                        isDragging = true
-                        updateValue(from: drag.location.y - 8, height: height)
-                    }
-                    .onEnded { _ in
-                        isDragging = false
-                    }
-            )
-            .padding(-8)
-            .onHover { hovering in
-                isHovering = hovering
-            }
-        }
-        .frame(width: 28, height: 122)
-        .accessibilityLabel(Text(accessibilityLabel))
-        .accessibilityValue(Text("\(Int(clampedValue * 100))%"))
-        .accessibilityAdjustableAction { direction in
-            switch direction {
-            case .increment:
-                value = min(1, value + 0.05)
-            case .decrement:
-                value = max(0, value - 0.05)
-            @unknown default:
-                break
-            }
-        }
-    }
-
-    private var trackColor: Color {
-        let opacity = isHovering || isDragging ? 0.28 : 0.18
-        return colorScheme == .dark
-            ? .white.opacity(opacity)
-            : .black.opacity(opacity)
-    }
-
-    private func updateValue(from locationY: CGFloat, height: CGFloat) {
-        guard height > 0 else { return }
-        value = 1 - Double(min(max(0, locationY / height), 1))
+        .controlSize(.small)
+        .padding(12)
+        .frame(width: 220)
     }
 }
 
@@ -699,7 +592,7 @@ private struct AirPlayRoutePicker: NSViewRepresentable {
 }
 
 private struct PlaybackKeyboardShortcutMonitor: NSViewRepresentable {
-    let performPlayPause: () -> Bool
+    let performPlayPause: () -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(performPlayPause: performPlayPause)
@@ -732,17 +625,19 @@ private struct PlaybackKeyboardShortcutMonitor: NSViewRepresentable {
 
     final class Coordinator {
         weak var window: NSWindow?
-        var performPlayPause: () -> Bool
+        var performPlayPause: () -> Void
 
         private var monitor: Any?
 
-        init(performPlayPause: @escaping () -> Bool) {
+        init(performPlayPause: @escaping () -> Void) {
             self.performPlayPause = performPlayPause
         }
 
         func start() {
             guard monitor == nil else { return }
-            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            monitor = NSEvent.addLocalMonitorForEvents(
+                matching: [.keyDown, .keyUp]
+            ) { [weak self] event in
                 self?.handle(event) ?? event
             }
         }
@@ -754,14 +649,18 @@ private struct PlaybackKeyboardShortcutMonitor: NSViewRepresentable {
         }
 
         private func handle(_ event: NSEvent) -> NSEvent? {
-            guard event.window === window,
+            let eventWindow = event.window ?? NSApp.keyWindow
+            let firstResponder = eventWindow?.firstResponder ?? window?.firstResponder
+            guard eventWindow === window || eventWindow?.parent === window,
                   event.keyCode == 49,
                   event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty,
-                  !(window?.firstResponder is NSTextView) else {
+                  !(firstResponder is NSTextView) else {
                 return event
             }
-            guard !event.isARepeat else { return nil }
-            return performPlayPause() ? nil : event
+            guard event.type == .keyDown,
+                  !event.isARepeat else { return nil }
+            performPlayPause()
+            return nil
         }
 
         deinit {

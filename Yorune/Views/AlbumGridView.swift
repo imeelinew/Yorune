@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AlbumGridView: View {
     @ObservedObject var library: AlbumLibraryStore
+    @ObservedObject var downloads: DownloadStore
     @ObservedObject var playback: PlaybackController
     let openSettings: () -> Void
 
@@ -73,6 +74,7 @@ struct AlbumGridView: View {
             AlbumDetailView(
                 album: album,
                 library: library,
+                downloads: downloads,
                 playback: playback
             )
         }
@@ -94,6 +96,7 @@ private struct AlbumDetailView: View {
 
     let album: Album
     @ObservedObject var library: AlbumLibraryStore
+    @ObservedObject var downloads: DownloadStore
     @ObservedObject var playback: PlaybackController
 
     @State private var state: LoadState = .loading
@@ -140,7 +143,9 @@ private struct AlbumDetailView: View {
                                     song: song,
                                     index: index,
                                     isCurrent: playback.currentSong?.id == song.id,
-                                    isPlaying: playback.isPlaying
+                                    isPlaying: playback.isPlaying,
+                                    isDownloaded: downloads.isDownloaded(song.id),
+                                    isDownloading: downloads.isDownloading(song.id)
                                 ) {
                                     playback.play(song, in: songs)
                                 }
@@ -151,6 +156,25 @@ private struct AlbumDetailView: View {
                                     Button("Add to Queue", systemImage: "text.badge.plus") {
                                         playback.addToQueue(song)
                                     }
+
+                                    Divider()
+
+                                    Button {
+                                        downloads.download(song)
+                                    } label: {
+                                        Label(
+                                            downloads.isDownloaded(song.id)
+                                                ? "Downloaded"
+                                                : "Download",
+                                            systemImage: downloads.isDownloaded(song.id)
+                                                ? "checkmark.circle.fill"
+                                                : "arrow.down.circle"
+                                        )
+                                    }
+                                    .disabled(
+                                        downloads.isDownloaded(song.id)
+                                            || downloads.isDownloading(song.id)
+                                    )
                                 }
 
                                 if index < songs.count - 1 {
@@ -242,6 +266,22 @@ private struct AlbumDetailView: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
+
+            Button {
+                downloads.download(songs)
+            } label: {
+                actionLabel(
+                    "Download",
+                    systemImage: albumDownloadSymbol(for: songs),
+                    showsTitle: showsTitles
+                )
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .disabled(!songs.contains { song in
+                !downloads.isDownloaded(song.id)
+                    && !downloads.isDownloading(song.id)
+            })
         }
     }
 
@@ -297,6 +337,12 @@ private struct AlbumDetailView: View {
         songs.reversed().forEach(playback.playNext)
     }
 
+    private func albumDownloadSymbol(for songs: [Song]) -> String {
+        songs.allSatisfy { downloads.isDownloaded($0.id) }
+            ? "checkmark.circle.fill"
+            : "arrow.down.circle"
+    }
+
     private func albumMetadata(_ songs: [Song]) -> String {
         let totalDuration = songs.reduce(0) { $0 + $1.duration }
         return "\(songs.count) • \(formatDuration(totalDuration))"
@@ -330,6 +376,8 @@ private struct AlbumTrackRow: View {
     let index: Int
     let isCurrent: Bool
     let isPlaying: Bool
+    let isDownloaded: Bool
+    let isDownloading: Bool
     let play: () -> Void
 
     var body: some View {
@@ -362,6 +410,18 @@ private struct AlbumTrackRow: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+
+                if isDownloaded {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("Downloaded")
+                } else if isDownloading {
+                    ProgressView()
+                        .controlSize(.mini)
+                        .frame(width: 11, height: 11)
+                        .accessibilityLabel("Downloading")
+                }
 
                 Text(formatDuration(song.duration))
                     .font(.system(size: 12))

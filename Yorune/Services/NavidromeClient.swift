@@ -104,6 +104,25 @@ actor NavidromeClient {
         )
     }
 
+    func download(songID: String) async throws -> NavidromeDownload {
+        let url = try makeURL(
+            action: "download",
+            queryItems: [URLQueryItem(name: "id", value: songID)]
+        )
+        let (temporaryURL, response) = try await session.download(from: url)
+        guard let response = response as? HTTPURLResponse,
+              (200 ... 299).contains(response.statusCode),
+              response.mimeType?.localizedCaseInsensitiveContains("xml") != true,
+              response.mimeType?.localizedCaseInsensitiveContains("json") != true else {
+            throw NavidromeError.network
+        }
+        return NavidromeDownload(
+            temporaryURL: temporaryURL,
+            suggestedFilename: response.suggestedFilename,
+            mimeType: response.mimeType
+        )
+    }
+
     private func data(from url: URL) async throws -> Data {
         let (data, response) = try await session.data(from: url)
         guard let response = response as? HTTPURLResponse,
@@ -144,6 +163,12 @@ actor NavidromeClient {
             .map { String(format: "%02x", $0) }
             .joined()
     }
+}
+
+struct NavidromeDownload: Sendable {
+    let temporaryURL: URL
+    let suggestedFilename: String?
+    let mimeType: String?
 }
 
 private struct SubsonicEnvelope: Decodable {

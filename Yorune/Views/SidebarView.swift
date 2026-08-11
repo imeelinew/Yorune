@@ -27,7 +27,7 @@ struct SidebarView: View {
                         .foregroundStyle(YoruneStyle.accent)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 10)
+                .padding(.horizontal, 6)
                 .padding(.vertical, 5)
                 .background {
                     if selection == .albums {
@@ -38,7 +38,7 @@ struct SidebarView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .listRowInsets(EdgeInsets(top: 1, leading: 10, bottom: 1, trailing: 10))
+            .listRowInsets(EdgeInsets(top: 1, leading: 4, bottom: 1, trailing: 10))
             .accessibilityAddTraits(selection == .albums ? .isSelected : [])
         }
         .listStyle(.sidebar)

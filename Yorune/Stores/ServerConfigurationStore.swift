@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 @MainActor
@@ -46,6 +47,7 @@ final class ServerConfigurationStore: ObservableObject {
         )
         defaults.set(configuration.serverURL, forKey: Keys.serverURL)
         defaults.set(configuration.username, forKey: Keys.username)
+        objectWillChange.send()
     }
 }
 
