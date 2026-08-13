@@ -17,6 +17,7 @@ final class AppModel: ObservableObject {
     let library: AlbumLibraryStore
     let downloads: DownloadStore
     let playback: PlaybackController
+    let updateService: UpdateService
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -24,7 +25,8 @@ final class AppModel: ObservableObject {
         settings: settings,
         configurationStore: configurationStore,
         library: library,
-        playback: playback
+        playback: playback,
+        updateService: updateService
     )
 
     init() {
@@ -39,6 +41,8 @@ final class AppModel: ObservableObject {
             configurationStore: configurationStore,
             downloads: downloads
         )
+        self.updateService = UpdateService()
+        self.updateService.start()
 
         settings.objectWillChange
             .sink { [weak self] in

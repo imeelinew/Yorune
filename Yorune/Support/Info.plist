@@ -29,5 +29,13 @@
 	</dict>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://imeelinew.github.io/Yorune/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>4r6yMauRlw+aLLxSMfyZqTLD4OTPOizEzu1hKRf9wUI=</string>
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
 </dict>
 </plist>

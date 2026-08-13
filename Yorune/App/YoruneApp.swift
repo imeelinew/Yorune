@@ -15,6 +15,13 @@ struct YoruneApp: App {
         }
         .defaultSize(width: 1_080, height: 720)
         .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates…") {
+                    appModel.updateService.checkForUpdates()
+                }
+                .disabled(!appModel.updateService.canCheckForUpdates)
+            }
+
             CommandGroup(replacing: .appSettings) {
                 Button("Settings") {
                     appModel.showSettings()

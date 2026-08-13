@@ -3,6 +3,7 @@ import SwiftUI
 
 struct GeneralSettingsView: View {
     @ObservedObject var settings: AppSettings
+    @ObservedObject var updateService: UpdateService
 
     var body: some View {
         PreferencesForm {
@@ -19,6 +20,17 @@ struct GeneralSettingsView: View {
             PreferencesRow(label: "Startup", alignment: .firstTextBaseline) {
                 Toggle("Launch at Login", isOn: $settings.launchAtLogin)
                     .toggleStyle(.checkbox)
+            }
+
+            PreferencesRow(label: "Updates", alignment: .firstTextBaseline) {
+                Toggle(
+                    "Automatically Check for Updates",
+                    isOn: Binding(
+                        get: { updateService.automaticallyChecksForUpdates },
+                        set: { updateService.setAutomaticallyChecksForUpdates($0) }
+                    )
+                )
+                .toggleStyle(.checkbox)
             }
         }
         .onAppear {
