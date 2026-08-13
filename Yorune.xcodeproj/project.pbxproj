@@ -374,6 +374,10 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Yorune/Support/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.eli.Yorune;
@@ -407,6 +411,10 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Yorune/Support/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.eli.Yorune;
