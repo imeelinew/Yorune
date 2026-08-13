@@ -23,6 +23,7 @@
   <img src="https://img.shields.io/badge/macOS-15%2B-black" alt="macOS 15+">
   <img src="https://img.shields.io/badge/Swift-6-orange" alt="Swift 6">
   <img src="https://img.shields.io/badge/Navidrome-Subsonic%20API-6b5cff" alt="Navidrome Subsonic API">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License"></a>
 </p>
 
 ---
@@ -77,3 +78,7 @@ open Yorune.xcodeproj
 ```
 
 Select the **Yorune** scheme, then choose **Product → Run**.
+
+## License
+
+Yorune is released under the [MIT License](LICENSE).
