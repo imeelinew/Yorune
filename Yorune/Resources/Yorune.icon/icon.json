@@ -1,9 +1,12 @@
 {
-  "fill" : "automatic",
+  "fill" : {
+    "automatic-gradient" : "srgb:0.98039,0.14118,0.23529,1.00000"
+  },
   "groups" : [
     {
       "layers" : [
         {
+          "hidden" : true,
           "image-name" : "music.note.svg",
           "name" : "music.note",
           "position" : {
@@ -11,6 +14,29 @@
             "translation-in-points" : [
               0,
               0
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.6
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.2
+      }
+    },
+    {
+      "layers" : [
+        {
+          "image-name" : "scribble.svg",
+          "name" : "scribble",
+          "position" : {
+            "scale" : 33,
+            "translation-in-points" : [
+              2.4917744667618535e-07,
+              -28.771023939432325
             ]
           }
         }
