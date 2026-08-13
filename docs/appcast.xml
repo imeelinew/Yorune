@@ -10,7 +10,7 @@
             <sparkle:version>1</sparkle:version>
             <sparkle:shortVersionString>0.1.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/imeelinew/Yorune/releases/download/v0.1.0/Yorune-0.1.0.zip" length="3629830" type="application/octet-stream" sparkle:edSignature="EKGDhrD5Zdx9/OXT8YewCch431MgAf+hgfCpZKwLtCJY3C5i9IIEp1eHXlbBdexCGPpWBytAhVaW/8NjESw9Dg=="/>
+            <enclosure url="https://github.com/imeelinew/Yorune/releases/download/v0.1.0/Yorune-0.1.0.zip" length="3629857" type="application/octet-stream" sparkle:edSignature="Ta4DYXXemvxXJFs4eNz//VY7W7I8V1MNO6OSvrPwV+UtwMmoy4VDcfA5wxGubq1wOpxm0R+dZ7YtA5Iuhsk9DQ=="/>
         </item>
     </channel>
 </rss>
