@@ -7,13 +7,19 @@ actor NavidromeClient {
     private let salt: String
     private let token: String
 
-    init(configuration: ServerConfiguration) {
+    init(configuration: ServerConfiguration, session: URLSession? = nil) {
         self.configuration = configuration
 
-        let sessionConfiguration = URLSessionConfiguration.ephemeral
-        sessionConfiguration.requestCachePolicy = .reloadIgnoringLocalCacheData
-        sessionConfiguration.urlCache = nil
-        self.session = URLSession(configuration: sessionConfiguration)
+        if let session {
+            self.session = session
+        } else {
+            let sessionConfiguration = URLSessionConfiguration.ephemeral
+            sessionConfiguration.requestCachePolicy = .reloadIgnoringLocalCacheData
+            sessionConfiguration.urlCache = nil
+            sessionConfiguration.timeoutIntervalForRequest = 60
+            sessionConfiguration.timeoutIntervalForResource = 60 * 60
+            self.session = URLSession(configuration: sessionConfiguration)
+        }
 
         let salt = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
         self.salt = salt
@@ -36,10 +42,13 @@ actor NavidromeClient {
                 ]
             )
             let data = try await data(from: url)
-            let envelope = try JSONDecoder().decode(SubsonicEnvelope.self, from: data)
+            let envelope = try decode(data)
 
             guard envelope.response.status == "ok" else {
-                throw NavidromeError.server
+                throw NavidromeError.server(
+                    code: envelope.response.error?.code,
+                    message: envelope.response.error?.message
+                )
             }
 
             let page = envelope.response.albumList?.albums ?? []
@@ -47,15 +56,7 @@ actor NavidromeClient {
                 Album(
                     id: album.id,
                     title: album.name,
-                    artworkURL: try album.coverArt.map { coverArt in
-                        try makeURL(
-                            action: "getCoverArt",
-                            queryItems: [
-                                URLQueryItem(name: "id", value: coverArt),
-                                URLQueryItem(name: "size", value: "600")
-                            ]
-                        )
-                    }
+                    artworkURL: try artworkURL(for: album.coverArt)
                 )
             })
 
@@ -75,26 +76,34 @@ actor NavidromeClient {
             ]
         )
         let data = try await data(from: url)
-        let envelope = try JSONDecoder().decode(SubsonicEnvelope.self, from: data)
+        let envelope = try decode(data)
 
-        guard envelope.response.status == "ok",
-              let album = envelope.response.album else {
-            throw NavidromeError.server
-        }
-
-        return (album.songs ?? []).map { song in
-            Song(
-                id: song.id,
-                title: song.title,
-                artist: song.artist ?? "",
-                albumID: albumID,
-                albumTitle: song.album ?? album.name ?? "",
-                duration: song.duration ?? 0,
-                trackNumber: song.track,
-                discNumber: song.discNumber,
-                artworkURL: nil
+        guard envelope.response.status == "ok" else {
+            throw NavidromeError.server(
+                code: envelope.response.error?.code,
+                message: envelope.response.error?.message
             )
         }
+        guard let album = envelope.response.album else {
+            throw NavidromeError.invalidResponse
+        }
+
+        let albumArtworkURL = try artworkURL(for: album.coverArt)
+        return try (album.songs ?? [])
+            .map { song in
+                Song(
+                    id: song.id,
+                    title: song.title,
+                    artist: song.artist ?? "",
+                    albumID: albumID,
+                    albumTitle: song.album ?? album.name ?? "",
+                    duration: song.duration ?? 0,
+                    trackNumber: song.track,
+                    discNumber: song.discNumber,
+                    artworkURL: try artworkURL(for: song.coverArt) ?? albumArtworkURL
+                )
+            }
+            .sorted(by: Self.songSort)
     }
 
     func streamURL(for songID: String) throws -> URL {
@@ -109,40 +118,99 @@ actor NavidromeClient {
             action: "download",
             queryItems: [URLQueryItem(name: "id", value: songID)]
         )
-        let (temporaryURL, response) = try await session.download(from: url)
-        guard let response = response as? HTTPURLResponse,
-              (200 ... 299).contains(response.statusCode),
-              response.mimeType?.localizedCaseInsensitiveContains("xml") != true,
-              response.mimeType?.localizedCaseInsensitiveContains("json") != true else {
-            throw NavidromeError.network
+        let temporaryURL: URL
+        let response: URLResponse
+        do {
+            (temporaryURL, response) = try await session.download(from: url)
+        } catch let error as URLError {
+            throw NavidromeError.transport(error.code)
         }
+        guard let response = response as? HTTPURLResponse else {
+            throw NavidromeError.invalidResponse
+        }
+        guard (200 ... 299).contains(response.statusCode) else {
+            throw NavidromeError.httpStatus(response.statusCode)
+        }
+        guard response.mimeType?.localizedCaseInsensitiveContains("xml") != true,
+              response.mimeType?.localizedCaseInsensitiveContains("json") != true else {
+            throw NavidromeError.invalidResponse
+        }
+
+        let ownedURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("yorune-download-\(UUID().uuidString)")
+        do {
+            try FileManager.default.moveItem(at: temporaryURL, to: ownedURL)
+        } catch {
+            do {
+                try FileManager.default.copyItem(at: temporaryURL, to: ownedURL)
+                try? FileManager.default.removeItem(at: temporaryURL)
+            } catch {
+                try? FileManager.default.removeItem(at: temporaryURL)
+                throw NavidromeError.invalidResponse
+            }
+        }
+
         return NavidromeDownload(
-            temporaryURL: temporaryURL,
+            temporaryURL: ownedURL,
             suggestedFilename: response.suggestedFilename,
             mimeType: response.mimeType
         )
     }
 
     private func data(from url: URL) async throws -> Data {
-        let (data, response) = try await session.data(from: url)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(from: url)
+        } catch let error as URLError {
+            throw NavidromeError.transport(error.code)
+        }
         guard let response = response as? HTTPURLResponse,
               (200 ... 299).contains(response.statusCode) else {
-            throw NavidromeError.network
+            if let response = response as? HTTPURLResponse {
+                throw NavidromeError.httpStatus(response.statusCode)
+            }
+            throw NavidromeError.invalidResponse
         }
         return data
     }
 
+    private func decode(_ data: Data) throws -> SubsonicEnvelope {
+        do {
+            return try JSONDecoder().decode(SubsonicEnvelope.self, from: data)
+        } catch {
+            throw NavidromeError.invalidResponse
+        }
+    }
+
+    private func artworkURL(for coverArt: String?) throws -> URL? {
+        guard let coverArt, !coverArt.isEmpty else { return nil }
+        return try makeURL(
+            action: "getCoverArt",
+            queryItems: [
+                URLQueryItem(name: "id", value: coverArt),
+                URLQueryItem(name: "size", value: "600")
+            ]
+        )
+    }
+
     private func makeURL(action: String, queryItems: [URLQueryItem]) throws -> URL {
-        guard let baseURL = URL(string: configuration.serverURL) else {
+        guard var components = URLComponents(string: configuration.serverURL),
+              let scheme = components.scheme?.lowercased(),
+              ["http", "https"].contains(scheme),
+              components.host != nil else {
             throw NavidromeError.invalidURL
         }
 
-        let endpoint = baseURL
-            .appendingPathComponent("rest")
-            .appendingPathComponent("\(action).view")
-        guard var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false) else {
-            throw NavidromeError.invalidURL
-        }
+        let basePath = components.percentEncodedPath
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        components.percentEncodedPath = "/" + [
+            basePath,
+            "rest",
+            "\(action).view"
+        ]
+        .filter { !$0.isEmpty }
+        .joined(separator: "/")
 
         components.queryItems = [
             URLQueryItem(name: "u", value: configuration.username),
@@ -162,6 +230,18 @@ actor NavidromeClient {
         Insecure.MD5.hash(data: Data(value.utf8))
             .map { String(format: "%02x", $0) }
             .joined()
+    }
+
+    private static func songSort(_ lhs: Song, _ rhs: Song) -> Bool {
+        let lhsDisc = lhs.discNumber ?? 1
+        let rhsDisc = rhs.discNumber ?? 1
+        if lhsDisc != rhsDisc { return lhsDisc < rhsDisc }
+
+        let lhsTrack = lhs.trackNumber ?? .max
+        let rhsTrack = rhs.trackNumber ?? .max
+        if lhsTrack != rhsTrack { return lhsTrack < rhsTrack }
+
+        return lhs.title.localizedStandardCompare(rhs.title) == .orderedAscending
     }
 }
 
@@ -183,20 +263,27 @@ private struct SubsonicResponse: Decodable {
     let status: String
     let albumList: SubsonicAlbumList?
     let album: SubsonicAlbumDetail?
+    let error: SubsonicResponseError?
 
     enum CodingKeys: String, CodingKey {
         case status
         case albumList = "albumList2"
         case album
+        case error
     }
 }
 
 private struct SubsonicAlbumList: Decodable {
-    let albums: [SubsonicAlbum]
+    let albums: [SubsonicAlbum]?
 
     enum CodingKeys: String, CodingKey {
         case albums = "album"
     }
+}
+
+private struct SubsonicResponseError: Decodable {
+    let code: Int?
+    let message: String?
 }
 
 private struct SubsonicAlbum: Decodable {
@@ -207,10 +294,12 @@ private struct SubsonicAlbum: Decodable {
 
 private struct SubsonicAlbumDetail: Decodable {
     let name: String?
+    let coverArt: String?
     let songs: [SubsonicSong]?
 
     enum CodingKeys: String, CodingKey {
         case name
+        case coverArt
         case songs = "song"
     }
 }
@@ -220,13 +309,76 @@ private struct SubsonicSong: Decodable {
     let title: String
     let artist: String?
     let album: String?
+    let coverArt: String?
     let duration: Double?
     let track: Int?
     let discNumber: Int?
 }
 
-enum NavidromeError: Error {
+enum NavidromeError: Error, Equatable, LocalizedError {
     case invalidURL
-    case network
-    case server
+    case transport(URLError.Code)
+    case httpStatus(Int)
+    case server(code: Int?, message: String?)
+    case invalidResponse
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL:
+            String(localized: "The server address is invalid.")
+        case .transport(.timedOut):
+            String(localized: "The connection timed out.")
+        case .transport(.notConnectedToInternet),
+             .transport(.dataNotAllowed),
+             .transport(.internationalRoamingOff):
+            String(localized: "Network access is unavailable.")
+        case .transport(.cannotConnectToHost),
+             .transport(.cannotFindHost),
+             .transport(.dnsLookupFailed),
+             .transport(.networkConnectionLost):
+            String(localized: "Yorune could not reach the server.")
+        case .transport(.appTransportSecurityRequiresSecureConnection):
+            String(localized: "iOS blocked the insecure server connection.")
+        case .transport:
+            String(localized: "The network request failed.")
+        case .httpStatus(let statusCode):
+            String(
+                format: String(localized: "The server returned HTTP %lld."),
+                Int64(statusCode)
+            )
+        case .server(let code, let message):
+            if code == 40 || code == 50 {
+                String(localized: "Navidrome rejected the username or password.")
+            } else if let message, !message.isEmpty {
+                String(
+                    format: String(localized: "Navidrome: %@"),
+                    message
+                )
+            } else {
+                String(localized: "Navidrome rejected the request.")
+            }
+        case .invalidResponse:
+            String(localized: "Navidrome returned an invalid response.")
+        }
+    }
+
+    var recoverySuggestion: String? {
+        switch self {
+        case .transport(.notConnectedToInternet),
+             .transport(.dataNotAllowed),
+             .transport(.cannotConnectToHost),
+             .transport(.networkConnectionLost):
+            String(
+                localized: "Check Local Network access for Yorune in iOS Settings, then verify Surge and the server address."
+            )
+        case .transport(.timedOut):
+            String(
+                localized: "Check the server address and port, then verify Surge is connected."
+            )
+        case .invalidURL:
+            String(localized: "Enter a complete address beginning with http:// or https://.")
+        default:
+            nil
+        }
+    }
 }

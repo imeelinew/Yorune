@@ -35,8 +35,39 @@
 		10000000000000000000001A /* AboutSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001B /* AboutSettingsView.swift */; };
 		10000000000000000000001B /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001C /* Localizable.xcstrings */; };
 		10000000000000000000001C /* UpdateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001D /* UpdateService.swift */; };
+		10000000000000000000001D /* YoruneStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001E /* YoruneStyle.swift */; };
+		10000000000000000000001E /* PlayerBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001F /* PlayerBar.swift */; };
+		110000000000000000000001 /* YoruneiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000001 /* YoruneiOSApp.swift */; };
+		110000000000000000000002 /* IOSContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000002 /* IOSContentView.swift */; };
+		110000000000000000000003 /* IOSSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000003 /* IOSSettingsView.swift */; };
+		110000000000000000000004 /* Album.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000002 /* Album.swift */; };
+		110000000000000000000005 /* ServerConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000009 /* ServerConfiguration.swift */; };
+		110000000000000000000006 /* AppLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000014 /* AppLanguage.swift */; };
+		110000000000000000000007 /* AppAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000015 /* AppAppearance.swift */; };
+		110000000000000000000008 /* YoruneStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001E /* YoruneStyle.swift */; };
+		110000000000000000000009 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000017 /* AppSettings.swift */; };
+		11000000000000000000000A /* ServerConfigurationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000A /* ServerConfigurationStore.swift */; };
+		11000000000000000000000B /* AlbumLibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000B /* AlbumLibraryStore.swift */; };
+		11000000000000000000000C /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000C /* KeychainStore.swift */; };
+		11000000000000000000000D /* NavidromeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000D /* NavidromeClient.swift */; };
+		11000000000000000000000E /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000008 /* AppModel.swift */; };
+		11000000000000000000000F /* AlbumArtworkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000E /* AlbumArtworkView.swift */; };
+		110000000000000000000010 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001C /* Localizable.xcstrings */; };
+		110000000000000000000011 /* Yorune.icon in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000013 /* Yorune.icon */; };
+		110000000000000000000012 /* PlayerBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001F /* PlayerBar.swift */; };
+		120000000000000000000001 /* YoruneCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220000000000000000000001 /* YoruneCoreTests.swift */; };
 		D00000000000000000000001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = C00000000000000000000002 /* Sparkle */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		E00000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 600000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 500000000000000000000002;
+			remoteInfo = "Yorune iOS";
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		200000000000000000000001 /* YoruneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YoruneApp.swift; sourceTree = "<group>"; };
@@ -68,6 +99,16 @@
 		20000000000000000000001B /* AboutSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutSettingsView.swift; sourceTree = "<group>"; };
 		20000000000000000000001C /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		20000000000000000000001D /* UpdateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateService.swift; sourceTree = "<group>"; };
+		20000000000000000000001E /* YoruneStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YoruneStyle.swift; sourceTree = "<group>"; };
+		20000000000000000000001F /* PlayerBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerBar.swift; sourceTree = "<group>"; };
+		210000000000000000000001 /* YoruneiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YoruneiOSApp.swift; sourceTree = "<group>"; };
+		210000000000000000000002 /* IOSContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSContentView.swift; sourceTree = "<group>"; };
+		210000000000000000000003 /* IOSSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSSettingsView.swift; sourceTree = "<group>"; };
+		210000000000000000000004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		210000000000000000000005 /* YoruneiOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = YoruneiOS.entitlements; sourceTree = "<group>"; };
+		210000000000000000000006 /* Yorune.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Yorune.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		220000000000000000000001 /* YoruneCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YoruneCoreTests.swift; sourceTree = "<group>"; };
+		220000000000000000000002 /* YoruneTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = YoruneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -80,6 +121,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		300000000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		300000000000000000000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -87,6 +142,7 @@
 			isa = PBXGroup;
 			children = (
 				400000000000000000000002 /* Yorune */,
+				40000000000000000000000D /* YoruneTests */,
 				400000000000000000000006 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -101,6 +157,7 @@
 				400000000000000000000005 /* Views */,
 				40000000000000000000000B /* Resources */,
 				40000000000000000000000A /* Support */,
+				40000000000000000000000C /* iOS */,
 			);
 			path = Yorune;
 			sourceTree = "<group>";
@@ -121,6 +178,7 @@
 				200000000000000000000009 /* ServerConfiguration.swift */,
 				200000000000000000000014 /* AppLanguage.swift */,
 				200000000000000000000015 /* AppAppearance.swift */,
+				20000000000000000000001E /* YoruneStyle.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -133,6 +191,7 @@
 				200000000000000000000005 /* AlbumGridView.swift */,
 				200000000000000000000006 /* AlbumCardView.swift */,
 				20000000000000000000000E /* AlbumArtworkView.swift */,
+				20000000000000000000001F /* PlayerBar.swift */,
 				400000000000000000000009 /* Settings */,
 			);
 			path = Views;
@@ -142,6 +201,8 @@
 			isa = PBXGroup;
 			children = (
 				200000000000000000000007 /* Yorune.app */,
+				210000000000000000000006 /* Yorune.app */,
+				220000000000000000000002 /* YoruneTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -198,6 +259,26 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
+		40000000000000000000000C /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				210000000000000000000001 /* YoruneiOSApp.swift */,
+				210000000000000000000002 /* IOSContentView.swift */,
+				210000000000000000000003 /* IOSSettingsView.swift */,
+				210000000000000000000004 /* Info.plist */,
+				210000000000000000000005 /* YoruneiOS.entitlements */,
+			);
+			path = iOS;
+			sourceTree = "<group>";
+		};
+		40000000000000000000000D /* YoruneTests */ = {
+			isa = PBXGroup;
+			children = (
+				220000000000000000000001 /* YoruneCoreTests.swift */,
+			);
+			path = YoruneTests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -222,6 +303,45 @@
 			productReference = 200000000000000000000007 /* Yorune.app */;
 			productType = "com.apple.product-type.application";
 		};
+		500000000000000000000002 /* Yorune iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 900000000000000000000003 /* Build configuration list for PBXNativeTarget "Yorune iOS" */;
+			buildPhases = (
+				700000000000000000000002 /* Sources */,
+				300000000000000000000002 /* Frameworks */,
+				800000000000000000000002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Yorune iOS";
+			packageProductDependencies = (
+			);
+			productName = Yorune;
+			productReference = 210000000000000000000006 /* Yorune.app */;
+			productType = "com.apple.product-type.application";
+		};
+		500000000000000000000003 /* YoruneTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 900000000000000000000004 /* Build configuration list for PBXNativeTarget "YoruneTests" */;
+			buildPhases = (
+				700000000000000000000003 /* Sources */,
+				300000000000000000000003 /* Frameworks */,
+				800000000000000000000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E00000000000000000000002 /* PBXTargetDependency */,
+			);
+			name = YoruneTests;
+			packageProductDependencies = (
+			);
+			productName = YoruneTests;
+			productReference = 220000000000000000000002 /* YoruneTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -234,6 +354,13 @@
 				TargetAttributes = {
 					500000000000000000000001 = {
 						CreatedOnToolsVersion = 16.0;
+					};
+					500000000000000000000002 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					500000000000000000000003 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = 500000000000000000000002;
 					};
 				};
 			};
@@ -257,6 +384,8 @@
 			projectRoot = "";
 			targets = (
 				500000000000000000000001 /* Yorune */,
+				500000000000000000000002 /* Yorune iOS */,
+				500000000000000000000003 /* YoruneTests */,
 			);
 		};
 /* End PBXProject section */
@@ -268,6 +397,22 @@
 			files = (
 				100000000000000000000012 /* Yorune.icon in Resources */,
 				10000000000000000000001B /* Localizable.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		800000000000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				110000000000000000000011 /* Yorune.icon in Resources */,
+				110000000000000000000010 /* Localizable.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		800000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -303,6 +448,39 @@
 				100000000000000000000019 /* AppearanceSettingsView.swift in Sources */,
 				10000000000000000000001A /* AboutSettingsView.swift in Sources */,
 				10000000000000000000001C /* UpdateService.swift in Sources */,
+				10000000000000000000001D /* YoruneStyle.swift in Sources */,
+				10000000000000000000001E /* PlayerBar.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		700000000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				110000000000000000000001 /* YoruneiOSApp.swift in Sources */,
+				110000000000000000000002 /* IOSContentView.swift in Sources */,
+				110000000000000000000003 /* IOSSettingsView.swift in Sources */,
+				110000000000000000000004 /* Album.swift in Sources */,
+				110000000000000000000005 /* ServerConfiguration.swift in Sources */,
+				110000000000000000000006 /* AppLanguage.swift in Sources */,
+				110000000000000000000007 /* AppAppearance.swift in Sources */,
+				110000000000000000000008 /* YoruneStyle.swift in Sources */,
+				110000000000000000000009 /* AppSettings.swift in Sources */,
+				11000000000000000000000A /* ServerConfigurationStore.swift in Sources */,
+				11000000000000000000000B /* AlbumLibraryStore.swift in Sources */,
+				11000000000000000000000C /* KeychainStore.swift in Sources */,
+				11000000000000000000000D /* NavidromeClient.swift in Sources */,
+				11000000000000000000000E /* AppModel.swift in Sources */,
+				11000000000000000000000F /* AlbumArtworkView.swift in Sources */,
+				110000000000000000000012 /* PlayerBar.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		700000000000000000000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				120000000000000000000001 /* YoruneCoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -424,6 +602,110 @@
 			};
 			name = Release;
 		};
+		A00000000000000000000005 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = Yorune;
+				CODE_SIGN_ENTITLEMENTS = Yorune/iOS/YoruneiOS.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5Q5QT76MJU;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Yorune/iOS/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.eli.Yorune.iOS;
+				PRODUCT_NAME = Yorune;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A00000000000000000000006 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = Yorune;
+				CODE_SIGN_ENTITLEMENTS = Yorune/iOS/YoruneiOS.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5Q5QT76MJU;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Yorune/iOS/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.eli.Yorune.iOS;
+				PRODUCT_NAME = Yorune;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		A00000000000000000000007 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5Q5QT76MJU;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.eli.YoruneTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Yorune.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Yorune";
+				TEST_TARGET_NAME = "Yorune iOS";
+			};
+			name = Debug;
+		};
+		A00000000000000000000008 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5Q5QT76MJU;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.eli.YoruneTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Yorune.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Yorune";
+				TEST_TARGET_NAME = "Yorune iOS";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -445,7 +727,33 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		900000000000000000000003 /* Build configuration list for PBXNativeTarget "Yorune iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00000000000000000000005 /* Debug */,
+				A00000000000000000000006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		900000000000000000000004 /* Build configuration list for PBXNativeTarget "YoruneTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00000000000000000000007 /* Debug */,
+				A00000000000000000000008 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin PBXTargetDependency section */
+		E00000000000000000000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 500000000000000000000002 /* Yorune iOS */;
+			targetProxy = E00000000000000000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCRemoteSwiftPackageReference section */
 		B00000000000000000000001 /* XCRemoteSwiftPackageReference "MacAppSettingsUI" */ = {

@@ -1,4 +1,8 @@
+import SwiftUI
+
+#if canImport(AppKit)
 import AppKit
+#endif
 
 enum AppAppearance: String, CaseIterable, Identifiable {
     case system
@@ -17,6 +21,7 @@ enum AppAppearance: String, CaseIterable, Identifiable {
 
     @MainActor
     func apply() {
+#if canImport(AppKit)
         switch self {
         case .system:
             NSApp.appearance = nil
@@ -24,6 +29,15 @@ enum AppAppearance: String, CaseIterable, Identifiable {
             NSApp.appearance = NSAppearance(named: .aqua)
         case .dark:
             NSApp.appearance = NSAppearance(named: .darkAqua)
+        }
+#endif
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
         }
     }
 }

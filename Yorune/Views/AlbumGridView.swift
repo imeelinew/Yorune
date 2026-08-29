@@ -73,9 +73,11 @@ struct AlbumGridView: View {
         .navigationDestination(for: Album.self) { album in
             AlbumDetailView(
                 album: album,
-                library: library,
                 downloads: downloads,
-                playback: playback
+                playback: playback,
+                songLoader: { album in
+                    try await library.fetchSongs(in: album)
+                }
             )
         }
     }
@@ -87,6 +89,69 @@ struct AlbumGridView: View {
     }
 }
 
+struct DownloadedAlbumGridView: View {
+    @ObservedObject var downloads: DownloadStore
+    @ObservedObject var playback: PlaybackController
+
+    @State private var searchText = ""
+
+    private let columns = [
+        GridItem(.adaptive(minimum: 140, maximum: 220), spacing: 20)
+    ]
+
+    var body: some View {
+        Group {
+            if downloads.offlineAlbums.isEmpty {
+                Text("No Downloads")
+                    .font(.title3)
+            } else if filteredAlbums.isEmpty {
+                Text("No Results")
+                    .font(.title3)
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: columns, alignment: .leading, spacing: 24) {
+                        ForEach(filteredAlbums) { album in
+                            NavigationLink(value: album) {
+                                AlbumCardView(album: album)
+                            }
+                            .buttonStyle(.plain)
+                            .contextMenu {
+                                Button("Remove Downloads", role: .destructive) {
+                                    downloads.remove(albumID: album.id)
+                                }
+                            }
+                        }
+                    }
+                    .padding(24)
+                }
+            }
+        }
+        .searchable(
+            text: $searchText,
+            placement: .toolbar,
+            prompt: Text("Search Albums")
+        )
+        .navigationTitle("Downloaded")
+        .navigationDestination(for: Album.self) { album in
+            AlbumDetailView(
+                album: album,
+                downloads: downloads,
+                playback: playback,
+                songLoader: { album in
+                    downloads.offlineSongs(in: album.id)
+                },
+                isOfflineLibrary: true
+            )
+        }
+    }
+
+    private var filteredAlbums: [Album] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return downloads.offlineAlbums }
+        return downloads.offlineAlbums.filter { $0.title.localizedStandardContains(query) }
+    }
+}
+
 private struct AlbumDetailView: View {
     private enum LoadState {
         case loading
@@ -95,9 +160,10 @@ private struct AlbumDetailView: View {
     }
 
     let album: Album
-    @ObservedObject var library: AlbumLibraryStore
     @ObservedObject var downloads: DownloadStore
     @ObservedObject var playback: PlaybackController
+    let songLoader: @MainActor (Album) async throws -> [Song]
+    var isOfflineLibrary = false
 
     @State private var state: LoadState = .loading
 
@@ -126,19 +192,22 @@ private struct AlbumDetailView: View {
             ProgressView("Loading")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case let .loaded(songs):
-            if songs.isEmpty {
+            let visibleSongs = isOfflineLibrary
+                ? downloads.offlineSongs(in: album.id)
+                : songs
+            if visibleSongs.isEmpty {
                 Text("No Songs")
                     .font(.title3)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
-                        albumHeader(songs)
+                        albumHeader(visibleSongs)
 
                         Divider()
 
                         LazyVStack(spacing: 0) {
-                            ForEach(Array(songs.enumerated()), id: \.element.id) { index, song in
+                            ForEach(Array(visibleSongs.enumerated()), id: \.element.id) { index, song in
                                 AlbumTrackRow(
                                     song: song,
                                     index: index,
@@ -147,7 +216,7 @@ private struct AlbumDetailView: View {
                                     isDownloaded: downloads.isDownloaded(song.id),
                                     isDownloading: downloads.isDownloading(song.id)
                                 ) {
-                                    playback.play(song, in: songs)
+                                    playback.play(song, in: visibleSongs)
                                 }
                                 .contextMenu {
                                     Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") {
@@ -159,25 +228,28 @@ private struct AlbumDetailView: View {
 
                                     Divider()
 
-                                    Button {
-                                        downloads.download(song)
-                                    } label: {
-                                        Label(
-                                            downloads.isDownloaded(song.id)
-                                                ? "Downloaded"
-                                                : "Download",
-                                            systemImage: downloads.isDownloaded(song.id)
-                                                ? "checkmark.circle.fill"
-                                                : "arrow.down.circle"
-                                        )
+                                    if downloads.isDownloading(song.id) {
+                                        Button("Cancel Download", systemImage: "xmark.circle") {
+                                            downloads.cancel([song.id])
+                                        }
+                                    } else if downloads.isDownloaded(song.id) {
+                                        Button(
+                                            "Remove Download",
+                                            systemImage: "trash",
+                                            role: .destructive
+                                        ) {
+                                            downloads.remove([song])
+                                        }
+                                    } else {
+                                        Button {
+                                            downloads.download(song)
+                                        } label: {
+                                            Label("Download", systemImage: "arrow.down.circle")
+                                        }
                                     }
-                                    .disabled(
-                                        downloads.isDownloaded(song.id)
-                                            || downloads.isDownloading(song.id)
-                                    )
                                 }
 
-                                if index < songs.count - 1 {
+                                if index < visibleSongs.count - 1 {
                                     Divider()
                                         .padding(.leading, 40)
                                 }
@@ -267,21 +339,36 @@ private struct AlbumDetailView: View {
             .buttonStyle(.bordered)
             .controlSize(.large)
 
-            Button {
-                downloads.download(songs)
-            } label: {
-                actionLabel(
-                    "Download",
-                    systemImage: albumDownloadSymbol(for: songs),
-                    showsTitle: showsTitles
-                )
+            if isOfflineLibrary || songs.allSatisfy({ downloads.isDownloaded($0.id) }) {
+                Button {
+                    downloads.remove(songs)
+                } label: {
+                    actionLabel(
+                        "Remove Downloads",
+                        systemImage: "trash",
+                        showsTitle: showsTitles
+                    )
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .disabled(songs.allSatisfy { !downloads.isDownloaded($0.id) })
+            } else {
+                Button {
+                    downloads.download(songs)
+                } label: {
+                    actionLabel(
+                        "Download",
+                        systemImage: albumDownloadSymbol(for: songs),
+                        showsTitle: showsTitles
+                    )
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .disabled(!songs.contains { song in
+                    !downloads.isDownloaded(song.id)
+                        && !downloads.isDownloading(song.id)
+                })
             }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-            .disabled(!songs.contains { song in
-                !downloads.isDownloaded(song.id)
-                    && !downloads.isDownloading(song.id)
-            })
         }
     }
 
@@ -363,7 +450,9 @@ private struct AlbumDetailView: View {
         state = .loading
 
         do {
-            state = .loaded(try await library.fetchSongs(in: album))
+            let songs = try await songLoader(album)
+            downloads.remember(songs)
+            state = .loaded(songs)
         } catch {
             state = .failed
         }

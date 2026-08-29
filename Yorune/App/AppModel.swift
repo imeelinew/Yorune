@@ -1,14 +1,61 @@
-import AppKit
 import AVFoundation
 import Combine
 import Foundation
 import MediaPlayer
 import OSLog
 
+#if canImport(AppKit)
+import AppKit
+private typealias NowPlayingImage = NSImage
+#elseif canImport(UIKit)
+import UIKit
+private typealias NowPlayingImage = UIImage
+#endif
+
 private let playbackLogger = Logger(
     subsystem: Bundle.main.bundleIdentifier ?? "Yorune",
     category: "Playback"
 )
+
+struct PlaybackStateSnapshot: Codable, Equatable {
+    let serverURL: String
+    let username: String
+    let queue: [Song]
+    let currentIndex: Int
+    let elapsedTime: Double
+
+    func restored(for configuration: ServerConfiguration) -> RestoredPlaybackState? {
+        guard serverURL == configuration.serverURL,
+              username == configuration.username,
+              queue.indices.contains(currentIndex) else { return nil }
+        let song = queue[currentIndex]
+        let duration = song.duration.isFinite ? max(song.duration, 0) : 0
+        let elapsed = elapsedTime.isFinite ? max(elapsedTime, 0) : 0
+        return RestoredPlaybackState(
+            queue: queue,
+            currentIndex: currentIndex,
+            duration: duration,
+            elapsedTime: duration > 0 ? min(elapsed, duration) : 0
+        )
+    }
+}
+
+struct RestoredPlaybackState: Equatable {
+    let queue: [Song]
+    let currentIndex: Int
+    let duration: Double
+    let elapsedTime: Double
+}
+
+enum PlaybackURLResolver {
+    static func resolve(
+        localURL: URL?,
+        remoteURL: () async throws -> URL
+    ) async throws -> URL {
+        if let localURL { return localURL }
+        return try await remoteURL()
+    }
+}
 
 @MainActor
 final class AppModel: ObservableObject {
@@ -17,10 +64,13 @@ final class AppModel: ObservableObject {
     let library: AlbumLibraryStore
     let downloads: DownloadStore
     let playback: PlaybackController
+#if os(macOS)
     let updateService: UpdateService
+#endif
 
     private var cancellables = Set<AnyCancellable>()
 
+#if os(macOS)
     private lazy var settingsWindowController = YoruneSettingsWindowController(
         settings: settings,
         configurationStore: configurationStore,
@@ -28,6 +78,7 @@ final class AppModel: ObservableObject {
         playback: playback,
         updateService: updateService
     )
+#endif
 
     init() {
         let settings = AppSettings()
@@ -41,8 +92,10 @@ final class AppModel: ObservableObject {
             configurationStore: configurationStore,
             downloads: downloads
         )
+#if os(macOS)
         self.updateService = UpdateService()
         self.updateService.start()
+#endif
 
         settings.objectWillChange
             .sink { [weak self] in
@@ -61,7 +114,9 @@ final class AppModel: ObservableObject {
     }
 
     func showSettings() {
+#if os(macOS)
         settingsWindowController.show()
+#endif
     }
 }
 
@@ -105,6 +160,10 @@ final class PlaybackController: ObservableObject {
     private var itemStateCancellable: AnyCancellable?
     private var remoteCommandTargets: [(MPRemoteCommand, Any)] = []
     private var nowPlayingArtwork: MPMediaItemArtwork?
+#if os(iOS)
+    private var audioSessionObservers: [NSObjectProtocol] = []
+    private var wasPlayingBeforeInterruption = false
+#endif
     private var lastNowPlayingSecond = -1
     private var lastPersistedPlaybackSecond = -1
     private var retryAttempt = 0
@@ -128,14 +187,6 @@ final class PlaybackController: ObservableObject {
             let decibels = minimumDecibels * (1 - min(level, 1))
             return Float(pow(10, decibels / 20))
         }
-    }
-
-    private struct PersistedState: Codable {
-        let serverURL: String
-        let username: String
-        let queue: [Song]
-        let currentIndex: Int
-        let elapsedTime: Double
     }
 
     var canGoPrevious: Bool {
@@ -166,9 +217,15 @@ final class PlaybackController: ObservableObject {
             rawValue: defaults.integer(forKey: DefaultsKey.repeatMode)
         ) ?? .off
         restorePlaybackState(from: defaults)
+#if os(iOS)
+        configureAudioSession()
+#endif
         configureRemoteCommands()
         updateRemoteCommandModes()
         updateRemoteCommandAvailability()
+        if let currentSong, downloads.localURL(for: currentSong.id) != nil {
+            loadCurrentSong(resumeAt: elapsedTime, shouldPlay: false)
+        }
     }
 
     deinit {
@@ -187,6 +244,9 @@ final class PlaybackController: ObservableObject {
         for (command, target) in remoteCommandTargets {
             command.removeTarget(target)
         }
+#if os(iOS)
+        audioSessionObservers.forEach(NotificationCenter.default.removeObserver)
+#endif
     }
 
     func play(_ song: Song, in songs: [Song]) {
@@ -220,6 +280,9 @@ final class PlaybackController: ObservableObject {
 
     func resume() {
         playbackIntent = true
+#if os(iOS)
+        activateAudioSession()
+#endif
         if duration > 0, elapsedTime >= duration {
             player?.seek(to: .zero)
             elapsedTime = 0
@@ -413,6 +476,28 @@ final class PlaybackController: ObservableObject {
         persistPlaybackState()
     }
 
+    func moveUpcoming(fromOffsets offsets: IndexSet, toOffset destination: Int) {
+        guard let currentIndex, !offsets.isEmpty else { return }
+        var upcoming = upcomingSongs
+        let movingSongs = offsets.sorted().compactMap { index in
+            upcoming.indices.contains(index) ? upcoming[index] : nil
+        }
+        guard !movingSongs.isEmpty else { return }
+
+        for index in offsets.sorted(by: >) where upcoming.indices.contains(index) {
+            upcoming.remove(at: index)
+        }
+        let removedBeforeDestination = offsets.filter { $0 < destination }.count
+        let insertionIndex = min(
+            max(destination - removedBeforeDestination, 0),
+            upcoming.endIndex
+        )
+        upcoming.insert(contentsOf: movingSongs, at: insertionIndex)
+        queue = Array(queue[...currentIndex]) + upcoming
+        updateRemoteCommandAvailability()
+        persistPlaybackState()
+    }
+
     func stopAndClearQueue() {
         loadingTask?.cancel()
         loadingTask = nil
@@ -433,6 +518,12 @@ final class PlaybackController: ObservableObject {
 
         player?.pause()
         player?.replaceCurrentItem(with: nil)
+#if os(iOS)
+        try? AVAudioSession.sharedInstance().setActive(
+            false,
+            options: .notifyOthersOnDeactivation
+        )
+#endif
         currentSong = nil
         currentIndex = nil
         queue = []
@@ -476,7 +567,11 @@ final class PlaybackController: ObservableObject {
             playbackLogger.error("Playback queue position is invalid")
             return
         }
-        let song = queue[currentIndex]
+        let queuedSong = queue[currentIndex]
+        let song = downloads.offlineSong(for: queuedSong.id) ?? queuedSong
+        if song != queuedSong {
+            queue[currentIndex] = song
+        }
         guard downloads.localURL(for: song.id) != nil
                 || configurationStore.configuration != nil else {
             playbackLogger.error("Server configuration is unavailable")
@@ -493,29 +588,29 @@ final class PlaybackController: ObservableObject {
         isBuffering = shouldPlay
         failure = nil
         lastNowPlayingSecond = -1
-        nowPlayingArtwork = nil
+        loadNowPlayingArtwork(for: song)
         updateRemoteCommandAvailability()
         updateNowPlayingInfo()
-        loadNowPlayingArtwork(for: song)
         persistPlaybackState()
         loadingTask = Task { [weak self] in
             guard let self else { return }
 
             do {
-                let url: URL
-                if let localURL = downloads.localURL(for: song.id) {
-                    url = localURL
-                } else {
-                    guard let configuration = configurationStore.configuration else {
-                        handlePlaybackFailure()
-                        return
+                let url = try await PlaybackURLResolver.resolve(
+                    localURL: downloads.localURL(for: song.id)
+                ) { [self] in
+                    guard let configuration = self.configurationStore.configuration else {
+                        throw ServerConfigurationError.invalid
                     }
-                    url = try await NavidromeClient(configuration: configuration)
+                    return try await NavidromeClient(configuration: configuration)
                         .streamURL(for: song.id)
                 }
                 guard !Task.isCancelled else { return }
 
                 let item = AVPlayerItem(url: url)
+#if os(iOS)
+                activateAudioSession()
+#endif
                 if let player {
                     player.replaceCurrentItem(with: item)
                 } else {
@@ -702,46 +797,141 @@ final class PlaybackController: ObservableObject {
         }
     }
 
+#if os(iOS)
+    private func configureAudioSession() {
+        configureAudioSessionCategory()
+        let session = AVAudioSession.sharedInstance()
+
+        let interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: session,
+            queue: .main
+        ) { [weak self] notification in
+            Task { @MainActor [weak self] in
+                self?.handleAudioInterruption(notification)
+            }
+        }
+        let routeObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: session,
+            queue: .main
+        ) { [weak self] notification in
+            Task { @MainActor [weak self] in
+                self?.handleAudioRouteChange(notification)
+            }
+        }
+        let resetObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.mediaServicesWereResetNotification,
+            object: session,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                configureAudioSessionCategory()
+                if currentSong != nil {
+                    loadCurrentSong(resumeAt: elapsedTime, shouldPlay: playbackIntent)
+                }
+            }
+        }
+        audioSessionObservers = [interruptionObserver, routeObserver, resetObserver]
+    }
+
+    private func configureAudioSessionCategory() {
+        do {
+            try AVAudioSession.sharedInstance().setCategory(
+                .playback,
+                mode: .default,
+                policy: .longFormAudio,
+                options: []
+            )
+        } catch {
+            playbackLogger.error(
+                "Audio session configuration failed: \(String(describing: error), privacy: .public)"
+            )
+        }
+    }
+
+    private func activateAudioSession() {
+        do {
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            playbackLogger.error(
+                "Audio session activation failed: \(String(describing: error), privacy: .public)"
+            )
+        }
+    }
+
+    private func handleAudioInterruption(_ notification: Notification) {
+        guard let rawType = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: rawType) else { return }
+
+        switch type {
+        case .began:
+            wasPlayingBeforeInterruption = playbackIntent
+            player?.pause()
+            isPlaying = false
+            isBuffering = false
+            updateNowPlayingInfo()
+        case .ended:
+            let rawOptions = notification.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+            let options = AVAudioSession.InterruptionOptions(rawValue: rawOptions)
+            guard wasPlayingBeforeInterruption, options.contains(.shouldResume) else { return }
+            activateAudioSession()
+            player?.play()
+            isPlaying = true
+            playbackIntent = true
+            updateNowPlayingInfo()
+        @unknown default:
+            break
+        }
+    }
+
+    private func handleAudioRouteChange(_ notification: Notification) {
+        guard let rawReason = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
+              let reason = AVAudioSession.RouteChangeReason(rawValue: rawReason),
+              reason == .oldDeviceUnavailable else { return }
+        pause()
+    }
+#endif
+
     private func loadNowPlayingArtwork(for song: Song) {
         artworkTask?.cancel()
-        guard let artworkURL = song.artworkURL else { return }
+        guard let artworkURL = song.artworkURL else {
+            nowPlayingArtwork = nil
+            return
+        }
+        if let data = ArtworkCache.shared.cachedData(for: artworkURL),
+           let image = NowPlayingImage(data: data) {
+            nowPlayingArtwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+            return
+        }
+
+        nowPlayingArtwork = nil
         artworkTask = Task { [weak self] in
-            do {
-                let (data, response) = try await URLSession.shared.data(from: artworkURL)
-                guard !Task.isCancelled,
-                      let response = response as? HTTPURLResponse,
-                      (200 ... 299).contains(response.statusCode),
-                      let image = NSImage(data: data),
-                      let self,
-                      currentSong?.id == song.id else { return }
-                nowPlayingArtwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
-                updateNowPlayingInfo()
-            } catch {
-                return
-            }
+            guard let data = await ArtworkCache.shared.data(for: artworkURL),
+                  !Task.isCancelled,
+                  let image = NowPlayingImage(data: data),
+                  let self,
+                  currentSong?.id == song.id else { return }
+            nowPlayingArtwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+            updateNowPlayingInfo()
         }
     }
 
     private func restorePlaybackState(from defaults: UserDefaults) {
         guard let configuration = configurationStore.configuration,
               let data = defaults.data(forKey: DefaultsKey.state),
-              let state = try? JSONDecoder().decode(PersistedState.self, from: data),
-              state.serverURL == configuration.serverURL,
-              state.username == configuration.username,
-              state.queue.indices.contains(state.currentIndex) else {
+              let snapshot = try? JSONDecoder().decode(PlaybackStateSnapshot.self, from: data),
+              let state = snapshot.restored(for: configuration) else {
             defaults.removeObject(forKey: DefaultsKey.state)
             return
         }
 
-        let song = state.queue[state.currentIndex]
-        let songDuration = song.duration.isFinite ? max(song.duration, 0) : 0
-        let restoredTime = state.elapsedTime.isFinite ? max(state.elapsedTime, 0) : 0
-
         queue = state.queue
         currentIndex = state.currentIndex
-        currentSong = song
-        duration = songDuration
-        elapsedTime = songDuration > 0 ? min(restoredTime, songDuration) : 0
+        currentSong = state.queue[state.currentIndex]
+        duration = state.duration
+        elapsedTime = state.elapsedTime
         pendingSeekOnReady = elapsedTime
         playbackIntent = false
         isPlaying = false
@@ -759,7 +949,7 @@ final class PlaybackController: ObservableObject {
             return
         }
 
-        let state = PersistedState(
+        let state = PlaybackStateSnapshot(
             serverURL: configuration.serverURL,
             username: configuration.username,
             queue: queue,

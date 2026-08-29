@@ -271,6 +271,22 @@
         }
       }
     },
+    "Connect a Server" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连接服务器"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連接伺服器"
+          }
+        }
+      }
+    },
     "Connected" : {
       "localizations" : {
         "zh-Hans" : {
@@ -299,6 +315,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "連接失敗"
+          }
+        }
+      }
+    },
+    "Check Local Network access for Yorune in iOS Settings, then verify Surge and the server address." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在 iOS 设置中检查 Yorune 的本地网络权限，然后确认 Surge 和服务器地址。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請在 iOS 設定中檢查 Yorune 的區域網路權限，然後確認 Surge 和伺服器位址。"
           }
         }
       }
@@ -332,6 +364,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "完成"
+          }
+        }
+      }
+    },
+    "Enter a complete address beginning with http:// or https://." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请输入以 http:// 或 https:// 开头的完整地址。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請輸入以 http:// 或 https:// 開頭的完整位址。"
           }
         }
       }
@@ -380,6 +428,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在下載"
+          }
+        }
+      }
+    },
+    "Cancel Download" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消下载"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消下載"
           }
         }
       }
@@ -563,6 +627,22 @@
         }
       }
     },
+    "No Downloads" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有下载内容"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒有下載內容"
+          }
+        }
+      }
+    },
     "No Queue" : {
       "localizations" : {
         "zh-Hans" : {
@@ -575,6 +655,86 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "沒有播放佇列"
+          }
+        }
+      }
+    },
+    "Navidrome rejected the request." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Navidrome 拒绝了请求。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Navidrome 拒絕了請求。"
+          }
+        }
+      }
+    },
+    "Navidrome rejected the username or password." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Navidrome 拒绝了用户名或密码。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Navidrome 拒絕了使用者名稱或密碼。"
+          }
+        }
+      }
+    },
+    "Navidrome returned an invalid response." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Navidrome 返回了无效响应。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Navidrome 傳回了無效回應。"
+          }
+        }
+      }
+    },
+    "Navidrome: %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Navidrome：%@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Navidrome：%@"
+          }
+        }
+      }
+    },
+    "Network access is unavailable." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "网络访问不可用。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "網路存取不可用。"
           }
         }
       }
@@ -607,6 +767,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "沒有歌曲"
+          }
+        }
+      }
+    },
+    "Now Playing" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在播放"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在播放"
           }
         }
       }
@@ -835,6 +1011,38 @@
         }
       }
     },
+    "Remove Download" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除下载"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刪除下載"
+          }
+        }
+      }
+    },
+    "Remove Downloads" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除下载"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刪除下載"
+          }
+        }
+      }
+    },
     "Remove from Queue" : {
       "localizations" : {
         "zh-Hans" : {
@@ -963,6 +1171,102 @@
         }
       }
     },
+    "The connection timed out." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连接超时。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連線逾時。"
+          }
+        }
+      }
+    },
+    "The network request failed." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "网络请求失败。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "網路請求失敗。"
+          }
+        }
+      }
+    },
+    "The server address is invalid." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "服务器地址无效。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "伺服器位址無效。"
+          }
+        }
+      }
+    },
+    "The server address or credentials are invalid." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "服务器地址或登录信息无效。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "伺服器位址或登入資訊無效。"
+          }
+        }
+      }
+    },
+    "The server returned HTTP %lld." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "服务器返回 HTTP %lld。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "伺服器傳回 HTTP %lld。"
+          }
+        }
+      }
+    },
+    "Unknown connection error." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未知连接错误。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未知連線錯誤。"
+          }
+        }
+      }
+    },
     "Shuffle" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1007,6 +1311,54 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "更新"
+          }
+        }
+      }
+    },
+    "Check the server address and port, then verify Surge is connected." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请检查服务器地址和端口，然后确认 Surge 已连接。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請檢查伺服器位址和連接埠，然後確認 Surge 已連線。"
+          }
+        }
+      }
+    },
+    "Yorune could not reach the server." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yorune 无法连接服务器。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yorune 無法連接伺服器。"
+          }
+        }
+      }
+    },
+    "iOS blocked the insecure server connection." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 阻止了不安全的服务器连接。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 阻止了不安全的伺服器連線。"
           }
         }
       }

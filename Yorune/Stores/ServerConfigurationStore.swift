@@ -11,9 +11,12 @@ final class ServerConfigurationStore: ObservableObject {
     }
 
     private let defaults: UserDefaults
-    private let keychain: KeychainStore
+    private let keychain: any KeychainStoring
 
-    init(defaults: UserDefaults = .standard, keychain: KeychainStore = KeychainStore()) {
+    init(
+        defaults: UserDefaults = .standard,
+        keychain: any KeychainStoring = KeychainStore()
+    ) {
         self.defaults = defaults
         self.keychain = keychain
     }
@@ -51,6 +54,14 @@ final class ServerConfigurationStore: ObservableObject {
     }
 }
 
-enum ServerConfigurationError: Error {
+enum ServerConfigurationError: Error, LocalizedError {
     case invalid
+
+    var errorDescription: String? {
+        String(localized: "The server address or credentials are invalid.")
+    }
+
+    var recoverySuggestion: String? {
+        String(localized: "Enter a complete address beginning with http:// or https://.")
+    }
 }

@@ -1,7 +1,12 @@
 import Foundation
 import Security
 
-struct KeychainStore {
+protocol KeychainStoring {
+    func read(service: String, account: String) throws -> String?
+    func save(_ value: String, service: String, account: String) throws
+}
+
+struct KeychainStore: KeychainStoring {
     func read(service: String, account: String) throws -> String? {
         let query: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,

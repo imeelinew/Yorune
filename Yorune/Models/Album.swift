@@ -1,12 +1,12 @@
 import Foundation
 
-struct Album: Identifiable, Sendable, Hashable {
+struct Album: Identifiable, Sendable, Hashable, Codable {
     let id: String
     let title: String
     let artworkURL: URL?
 }
 
-struct Song: Identifiable, Sendable, Codable {
+struct Song: Identifiable, Sendable, Hashable, Codable {
     let id: String
     let title: String
     let artist: String

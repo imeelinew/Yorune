@@ -5,8 +5,8 @@
 <h1 align="center">Yorune</h1>
 
 <p align="center">
-  专为 Navidrome 打造的原生 macOS 音乐客户端<br>
-  专辑浏览、在线播放、播放队列、AirPlay，以及贴合系统的桌面体验
+  专为 Navidrome 打造的原生 Apple 平台音乐客户端<br>
+  支持 macOS、iPhone 与 iPad
 </p>
 
 <p align="center">
@@ -21,6 +21,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/macOS-15%2B-black" alt="macOS 15+">
+  <img src="https://img.shields.io/badge/iOS%20%2F%20iPadOS-26%2B-black" alt="iOS and iPadOS 26+">
   <img src="https://img.shields.io/badge/Swift-6-orange" alt="Swift 6">
   <img src="https://img.shields.io/badge/Navidrome-Subsonic%20API-6b5cff" alt="Navidrome Subsonic API">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License"></a>
@@ -34,7 +35,7 @@
 
 ## 简介
 
-Yorune 是一款为 Navidrome 自托管音乐库设计的原生 macOS 客户端。它直接通过 Subsonic API 读取专辑、曲目和封面，并以 SwiftUI、AppKit、AVFoundation 构建完整的桌面播放体验。
+Yorune 是一款为 Navidrome 自托管音乐库设计的原生 Apple 平台客户端。它直接通过 Subsonic API 读取专辑、曲目和封面，并以 SwiftUI、AppKit、UIKit 与 AVFoundation 构建系统原生播放体验。
 
 应用以专辑为核心组织音乐库：打开后可以搜索和浏览专辑，进入详情查看曲目并开始播放；底部播放栏负责进度、音量和播放模式，右侧队列则用于查看和整理接下来播放的内容。
 
@@ -69,7 +70,7 @@ Yorune 分页读取 Navidrome 专辑数据，按需加载专辑曲目，并缓�
 
 ## 从源码构建
 
-需要 Xcode 26 或兼容 Swift 6 的新版 Xcode，以及 macOS 15 或更高版本。
+需要 Xcode 27 或更新版本。macOS target 支持 macOS 15 或更高版本，iOS target 支持 iOS 与 iPadOS 26 或更高版本。
 
 ```bash
 git clone https://github.com/imeelinew/Yorune.git
@@ -82,3 +83,4 @@ open Yorune.xcodeproj
 ## 许可证
 
 Yorune 以 [MIT License](LICENSE) 开源。
+在 Xcode 中选择 **Yorune** scheme 构建 macOS 版本，或选择 **Yorune iOS** scheme 构建 iPhone 与 iPad 版本。

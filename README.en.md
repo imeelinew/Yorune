@@ -5,8 +5,8 @@
 <h1 align="center">Yorune</h1>
 
 <p align="center">
-  A native macOS music client built for Navidrome<br>
-  Album browsing, streaming playback, queue management, AirPlay, and a desktop-first experience
+  A native Apple-platform music client built for Navidrome<br>
+  Available for macOS, iPhone, and iPad
 </p>
 
 <p align="center">
@@ -21,6 +21,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/macOS-15%2B-black" alt="macOS 15+">
+  <img src="https://img.shields.io/badge/iOS%20%2F%20iPadOS-26%2B-black" alt="iOS and iPadOS 26+">
   <img src="https://img.shields.io/badge/Swift-6-orange" alt="Swift 6">
   <img src="https://img.shields.io/badge/Navidrome-Subsonic%20API-6b5cff" alt="Navidrome Subsonic API">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License"></a>
@@ -34,7 +35,7 @@
 
 ## About
 
-Yorune is a native macOS client for self-hosted Navidrome libraries. It reads albums, tracks, and artwork through the Subsonic API, then builds a complete desktop playback experience with SwiftUI, AppKit, and AVFoundation.
+Yorune is a native Apple-platform client for self-hosted Navidrome libraries. It reads albums, tracks, and artwork through the Subsonic API, then builds a system-native playback experience with SwiftUI, AppKit, UIKit, and AVFoundation.
 
 The library is organized around albums. Search or browse the collection, open an album to inspect its tracks, and start playback directly from the detail view. A bottom player handles progress, volume, and playback modes, while a side panel exposes the active queue.
 
@@ -69,7 +70,7 @@ Open **Settings → Server**, enter the Navidrome URL, username, and password, t
 
 ## Build from Source
 
-You need Xcode 26 or another recent Xcode release with Swift 6 support, plus macOS 15 or later.
+You need Xcode 27 or later. The macOS target supports macOS 15 or later, and the iOS target supports iOS and iPadOS 26 or later.
 
 ```bash
 git clone https://github.com/imeelinew/Yorune.git
@@ -82,3 +83,4 @@ Select the **Yorune** scheme, then choose **Product → Run**.
 ## License
 
 Yorune is released under the [MIT License](LICENSE).
+Select the **Yorune** scheme for macOS or the **Yorune iOS** scheme for iPhone and iPad.
