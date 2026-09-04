@@ -9,7 +9,7 @@ import UIKit
 
 @MainActor
 final class AlbumLibraryStore: ObservableObject {
-    enum State {
+    enum State: Equatable {
         case needsConfiguration
         case loading
         case loaded
@@ -18,10 +18,14 @@ final class AlbumLibraryStore: ObservableObject {
 
     @Published private(set) var albums: [Album] = []
     @Published private(set) var state: State = .needsConfiguration
+    @Published private(set) var isSyncing = false
 
     private let configurationStore: ServerConfigurationStore
     private let fileManager: FileManager
     private var songsByAlbumID: [String: [Song]] = [:]
+    private var lastSuccessfulSyncDate: Date?
+
+    private static let automaticSyncInterval: TimeInterval = 60
 
     init(
         configurationStore: ServerConfigurationStore,
@@ -32,15 +36,41 @@ final class AlbumLibraryStore: ObservableObject {
     }
 
     func reload() async {
-        guard state != .loading else { return }
+        await reload(ignoringAutomaticSyncThrottle: true)
+    }
+
+    func runAutomaticSync() async {
+        while !Task.isCancelled {
+            await reload(ignoringAutomaticSyncThrottle: false)
+
+            do {
+                try await Task.sleep(for: .seconds(Self.automaticSyncInterval))
+            } catch {
+                return
+            }
+        }
+    }
+
+    private func reload(ignoringAutomaticSyncThrottle: Bool) async {
+        guard !isSyncing, state != .loading else { return }
         guard let configuration = configurationStore.configuration else {
             albums = []
             songsByAlbumID = [:]
             state = .needsConfiguration
             return
         }
+        if !ignoringAutomaticSyncThrottle,
+           let lastSuccessfulSyncDate,
+           Date.now.timeIntervalSince(lastSuccessfulSyncDate) < Self.automaticSyncInterval {
+            return
+        }
 
-        await load(using: configuration)
+        isSyncing = true
+        defer { isSyncing = false }
+
+        if await load(using: configuration) {
+            lastSuccessfulSyncDate = .now
+        }
     }
 
     func connect(using configuration: ServerConfiguration) async throws {
@@ -59,6 +89,7 @@ final class AlbumLibraryStore: ObservableObject {
             self.albums = albums
             persistLibraryCache(for: configuration)
             state = .loaded
+            lastSuccessfulSyncDate = .now
         } catch {
             restoreLibrary(
                 configuration: configuration,
@@ -106,7 +137,7 @@ final class AlbumLibraryStore: ObservableObject {
         }
     }
 
-    private func load(using configuration: ServerConfiguration) async {
+    private func load(using configuration: ServerConfiguration) async -> Bool {
         applyCachedLibrary(for: configuration)
         if albums.isEmpty {
             state = .loading
@@ -119,10 +150,12 @@ final class AlbumLibraryStore: ObservableObject {
             songsByAlbumID = songsByAlbumID.filter { albumIDs.contains($0.key) }
             persistLibraryCache(for: configuration)
             state = .loaded
+            return true
         } catch {
             if albums.isEmpty {
                 state = .failed
             }
+            return false
         }
     }
 

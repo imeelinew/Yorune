@@ -44,6 +44,13 @@ struct AlbumGridView: View {
             }
         }
         .navigationTitle("Albums")
+        .toolbar {
+            if library.state != .needsConfiguration {
+                ToolbarItem(placement: .primaryAction) {
+                    LibrarySyncButton(library: library)
+                }
+            }
+        }
     }
 
     private var albumCollection: some View {
@@ -86,6 +93,34 @@ struct AlbumGridView: View {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return library.albums }
         return library.albums.filter { $0.title.localizedStandardContains(query) }
+    }
+}
+
+private struct LibrarySyncButton: View {
+    @ObservedObject var library: AlbumLibraryStore
+
+    private var isWorking: Bool {
+        library.isSyncing || library.state == .loading
+    }
+
+    var body: some View {
+        Button {
+            Task {
+                await library.reload()
+            }
+        } label: {
+            ZStack {
+                Image(systemName: "arrow.clockwise")
+                    .opacity(isWorking ? 0 : 1)
+                ProgressView()
+                    .controlSize(.small)
+                    .opacity(isWorking ? 1 : 0)
+            }
+            .frame(width: 16, height: 16)
+        }
+        .accessibilityLabel("Sync Library")
+        .disabled(isWorking)
+        .help("Sync Library")
     }
 }
 

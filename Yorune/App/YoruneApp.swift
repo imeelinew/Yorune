@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct YoruneApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var appModel = AppModel()
 
     var body: some Scene {
@@ -9,8 +10,9 @@ struct YoruneApp: App {
             ContentView()
                 .environmentObject(appModel)
                 .environment(\.locale, appModel.settings.language.locale)
-                .task {
-                    await appModel.library.reload()
+                .task(id: scenePhase) {
+                    guard scenePhase == .active else { return }
+                    await appModel.library.runAutomaticSync()
                 }
         }
         .defaultSize(width: 1_080, height: 720)

@@ -245,6 +245,40 @@ private struct IOSOnlineLibraryView: View {
             }
         }
         .navigationTitle("Albums")
+        .toolbar {
+            if library.state != .needsConfiguration {
+                ToolbarItem(placement: .topBarTrailing) {
+                    IOSLibrarySyncButton(library: library)
+                }
+            }
+        }
+    }
+}
+
+private struct IOSLibrarySyncButton: View {
+    @ObservedObject var library: AlbumLibraryStore
+
+    private var isWorking: Bool {
+        library.isSyncing || library.state == .loading
+    }
+
+    var body: some View {
+        Button {
+            Task {
+                await library.reload()
+            }
+        } label: {
+            ZStack {
+                Image(systemName: "arrow.clockwise")
+                    .opacity(isWorking ? 0 : 1)
+                ProgressView()
+                    .controlSize(.small)
+                    .opacity(isWorking ? 1 : 0)
+            }
+            .frame(width: 20, height: 20)
+        }
+        .accessibilityLabel("Sync Library")
+        .disabled(isWorking)
     }
 }
 
