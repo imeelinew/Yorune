@@ -269,7 +269,7 @@ private struct IOSLibrarySyncButton: View {
             }
         } label: {
             ZStack {
-                Image(systemName: "arrow.clockwise")
+                Image(systemName: "arrow.trianglehead.clockwise")
                     .opacity(isWorking ? 0 : 1)
                 ProgressView()
                     .controlSize(.small)
@@ -312,7 +312,7 @@ private struct IOSAlbumCollectionView: View {
     @State private var searchText = ""
 
     private let columns = [
-        GridItem(.adaptive(minimum: 140, maximum: 220), spacing: 16)
+        GridItem(.adaptive(minimum: 140, maximum: 220), spacing: 16, alignment: .top)
     ]
 
     var body: some View {

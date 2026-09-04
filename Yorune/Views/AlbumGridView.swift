@@ -110,7 +110,7 @@ private struct LibrarySyncButton: View {
             }
         } label: {
             ZStack {
-                Image(systemName: "arrow.clockwise")
+                Image(systemName: "arrow.trianglehead.clockwise")
                     .opacity(isWorking ? 0 : 1)
                 ProgressView()
                     .controlSize(.small)
