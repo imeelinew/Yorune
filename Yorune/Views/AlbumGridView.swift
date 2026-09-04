@@ -9,7 +9,7 @@ struct AlbumGridView: View {
     @State private var searchText = ""
 
     private let columns = [
-        GridItem(.adaptive(minimum: 140, maximum: 220), spacing: 20)
+        GridItem(.adaptive(minimum: 140, maximum: 220), spacing: 20, alignment: .top)
     ]
 
     var body: some View {
@@ -131,7 +131,7 @@ struct DownloadedAlbumGridView: View {
     @State private var searchText = ""
 
     private let columns = [
-        GridItem(.adaptive(minimum: 140, maximum: 220), spacing: 20)
+        GridItem(.adaptive(minimum: 140, maximum: 220), spacing: 20, alignment: .top)
     ]
 
     var body: some View {

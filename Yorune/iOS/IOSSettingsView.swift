@@ -49,7 +49,6 @@ struct IOSSettingsView: View {
                         Text(LocalizedStringKey(appearance.title)).tag(appearance)
                     }
                 }
-                .pickerStyle(.segmented)
             }
 
             Section("About") {
