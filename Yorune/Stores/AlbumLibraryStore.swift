@@ -700,6 +700,7 @@ final class DownloadStore: ObservableObject {
             return Album(
                 id: albumID,
                 title: song.albumTitle,
+                artist: song.artist,
                 artworkURL: localArtworkURL(for: albumID),
                 lastPlayed: nil
             )

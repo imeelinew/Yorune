@@ -552,7 +552,7 @@ private struct PlayerVolumePopover: View {
 }
 
 #if os(macOS)
-private struct AirPlayRoutePicker: NSViewRepresentable {
+struct AirPlayRoutePicker: NSViewRepresentable {
     func makeNSView(context: Context) -> AVRoutePickerView {
         let view = AVRoutePickerView()
         view.setRoutePickerButtonColor(.labelColor, for: .normal)
@@ -567,7 +567,7 @@ private struct AirPlayRoutePicker: NSViewRepresentable {
     func updateNSView(_ nsView: AVRoutePickerView, context: Context) {}
 }
 #elseif os(iOS)
-private struct AirPlayRoutePicker: UIViewRepresentable {
+struct AirPlayRoutePicker: UIViewRepresentable {
     func makeUIView(context: Context) -> AVRoutePickerView {
         let view = AVRoutePickerView()
         view.prioritizesVideoDevices = false

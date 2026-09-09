@@ -252,11 +252,11 @@ final class YoruneCoreTests: XCTestCase {
         let recent = Date(timeIntervalSince1970: 200)
         let older = Date(timeIntervalSince1970: 100)
         let albums = [
-            Album(id: "never-z", title: "Zulu", artworkURL: nil, lastPlayed: nil),
-            Album(id: "older", title: "Older", artworkURL: nil, lastPlayed: older),
-            Album(id: "never-a", title: "Alpha", artworkURL: nil, lastPlayed: nil),
-            Album(id: "recent-b", title: "Bravo", artworkURL: nil, lastPlayed: recent),
-            Album(id: "recent-a", title: "Alpha Recent", artworkURL: nil, lastPlayed: recent)
+            Album(id: "never-z", title: "Zulu", artist: "", artworkURL: nil, lastPlayed: nil),
+            Album(id: "older", title: "Older", artist: "", artworkURL: nil, lastPlayed: older),
+            Album(id: "never-a", title: "Alpha", artist: "", artworkURL: nil, lastPlayed: nil),
+            Album(id: "recent-b", title: "Bravo", artist: "", artworkURL: nil, lastPlayed: recent),
+            Album(id: "recent-a", title: "Alpha Recent", artist: "", artworkURL: nil, lastPlayed: recent)
         ]
 
         XCTAssertEqual(
@@ -290,7 +290,7 @@ final class YoruneCoreTests: XCTestCase {
 
     func testNavidromeClientMapsAlbumMetadataAndArtwork() async throws {
         let session = makeSession(
-            body: #"{"subsonic-response":{"status":"ok","version":"1.16.1","albumList2":{"album":[{"id":"album-1","name":"Imaginal Disk","coverArt":"album-cover","played":"2026-08-30T21:14:33.456Z"}]}}}"#
+            body: #"{"subsonic-response":{"status":"ok","version":"1.16.1","albumList2":{"album":[{"id":"album-1","name":"Imaginal Disk","artist":"Magdalena Bay","coverArt":"album-cover","played":"2026-08-30T21:14:33.456Z"}]}}}"#
         )
         let client = NavidromeClient(
             configuration: makeServerConfiguration(),
@@ -302,6 +302,7 @@ final class YoruneCoreTests: XCTestCase {
 
         XCTAssertEqual(album.id, "album-1")
         XCTAssertEqual(album.title, "Imaginal Disk")
+        XCTAssertEqual(album.artist, "Magdalena Bay")
         XCTAssertEqual(
             album.lastPlayed,
             ISO8601DateFormatter().date(from: "2026-08-30T21:14:33Z")

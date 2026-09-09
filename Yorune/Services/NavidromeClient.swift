@@ -56,6 +56,7 @@ actor NavidromeClient {
                 Album(
                     id: album.id,
                     title: album.name,
+                    artist: album.artist ?? "",
                     artworkURL: try artworkURL(for: album.coverArt),
                     lastPlayed: album.played?.date
                 )
@@ -290,6 +291,7 @@ private struct SubsonicResponseError: Decodable {
 private struct SubsonicAlbum: Decodable {
     let id: String
     let name: String
+    let artist: String?
     let coverArt: String?
     let played: SubsonicDate?
 }

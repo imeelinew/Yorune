@@ -3,8 +3,27 @@ import Foundation
 struct Album: Identifiable, Sendable, Hashable, Codable {
     let id: String
     let title: String
+    let artist: String
     let artworkURL: URL?
     let lastPlayed: Date?
+
+    init(id: String, title: String, artist: String, artworkURL: URL?, lastPlayed: Date?) {
+        self.id = id
+        self.title = title
+        self.artist = artist
+        self.artworkURL = artworkURL
+        self.lastPlayed = lastPlayed
+    }
+
+    // 旧版磁盘缓存没有 artist 字段，缺省为空字符串以保持缓存可读。
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        artist = try container.decodeIfPresent(String.self, forKey: .artist) ?? ""
+        artworkURL = try container.decodeIfPresent(URL.self, forKey: .artworkURL)
+        lastPlayed = try container.decodeIfPresent(Date.self, forKey: .lastPlayed)
+    }
 }
 
 struct Song: Identifiable, Sendable, Hashable, Codable {

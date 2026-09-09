@@ -40,6 +40,9 @@
 		110000000000000000000001 /* YoruneiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000001 /* YoruneiOSApp.swift */; };
 		110000000000000000000002 /* IOSContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000002 /* IOSContentView.swift */; };
 		110000000000000000000003 /* IOSSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000003 /* IOSSettingsView.swift */; };
+		110000000000000000000020 /* IOSAlbumGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000007 /* IOSAlbumGridView.swift */; };
+		110000000000000000000021 /* IOSAlbumDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000008 /* IOSAlbumDetailView.swift */; };
+		110000000000000000000022 /* IOSNowPlayingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000009 /* IOSNowPlayingView.swift */; };
 		110000000000000000000004 /* Album.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000002 /* Album.swift */; };
 		110000000000000000000005 /* ServerConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000009 /* ServerConfiguration.swift */; };
 		110000000000000000000006 /* AppLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000014 /* AppLanguage.swift */; };
@@ -104,6 +107,9 @@
 		210000000000000000000001 /* YoruneiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YoruneiOSApp.swift; sourceTree = "<group>"; };
 		210000000000000000000002 /* IOSContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSContentView.swift; sourceTree = "<group>"; };
 		210000000000000000000003 /* IOSSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSSettingsView.swift; sourceTree = "<group>"; };
+		210000000000000000000007 /* IOSAlbumGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAlbumGridView.swift; sourceTree = "<group>"; };
+		210000000000000000000008 /* IOSAlbumDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAlbumDetailView.swift; sourceTree = "<group>"; };
+		210000000000000000000009 /* IOSNowPlayingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSNowPlayingView.swift; sourceTree = "<group>"; };
 		210000000000000000000004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		210000000000000000000005 /* YoruneiOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = YoruneiOS.entitlements; sourceTree = "<group>"; };
 		210000000000000000000006 /* Yorune.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Yorune.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -265,6 +271,9 @@
 				210000000000000000000001 /* YoruneiOSApp.swift */,
 				210000000000000000000002 /* IOSContentView.swift */,
 				210000000000000000000003 /* IOSSettingsView.swift */,
+				210000000000000000000007 /* IOSAlbumGridView.swift */,
+				210000000000000000000008 /* IOSAlbumDetailView.swift */,
+				210000000000000000000009 /* IOSNowPlayingView.swift */,
 				210000000000000000000004 /* Info.plist */,
 				210000000000000000000005 /* YoruneiOS.entitlements */,
 			);
@@ -460,6 +469,9 @@
 				110000000000000000000001 /* YoruneiOSApp.swift in Sources */,
 				110000000000000000000002 /* IOSContentView.swift in Sources */,
 				110000000000000000000003 /* IOSSettingsView.swift in Sources */,
+				110000000000000000000020 /* IOSAlbumGridView.swift in Sources */,
+				110000000000000000000021 /* IOSAlbumDetailView.swift in Sources */,
+				110000000000000000000022 /* IOSNowPlayingView.swift in Sources */,
 				110000000000000000000004 /* Album.swift in Sources */,
 				110000000000000000000005 /* ServerConfiguration.swift in Sources */,
 				110000000000000000000006 /* AppLanguage.swift in Sources */,
