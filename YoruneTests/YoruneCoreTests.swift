@@ -265,6 +265,24 @@ final class YoruneCoreTests: XCTestCase {
         )
     }
 
+    func testLocalRecentPlaysOverrideServerLastPlayed() {
+        let serverRecent = Date(timeIntervalSince1970: 1_000)
+        let localNewer = Date(timeIntervalSince1970: 2_000)
+        let albums = [
+            Album(id: "server", title: "Server", artist: "", artworkURL: nil, lastPlayed: serverRecent),
+            Album(id: "local", title: "Local", artist: "", artworkURL: nil, lastPlayed: nil),
+            Album(id: "older-local", title: "Older", artist: "", artworkURL: nil, lastPlayed: serverRecent)
+        ]
+
+        let sorted = albums.sortedByLastPlayed(recentPlays: [
+            "local": localNewer,
+            "older-local": Date(timeIntervalSince1970: 500)
+        ])
+
+        // 本机较新的播放记录应排到最前；本机较旧的记录不应压低服务器时间。
+        XCTAssertEqual(sorted.map(\.id), ["local", "older-local", "server"])
+    }
+
     func testNavidromeClientAcceptsAnEmptyAlbumList() async throws {
         let session = makeSession(
             body: #"{"subsonic-response":{"status":"ok","version":"1.16.1","albumList2":{}}}"#

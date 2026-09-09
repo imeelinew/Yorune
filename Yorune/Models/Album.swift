@@ -59,9 +59,20 @@ struct Song: Identifiable, Sendable, Hashable, Codable {
 }
 
 extension [Album] {
-    func sortedByLastPlayed() -> [Album] {
-        sorted { lhs, rhs in
-            switch (lhs.lastPlayed, rhs.lastPlayed) {
+    /// 按最近收听排序。`recentPlays` 是本机记录的专辑最近播放时间，
+    /// 与服务器返回的 `lastPlayed` 取较新者，这样本机播放能立即影响排序。
+    func sortedByLastPlayed(recentPlays: [String: Date] = [:]) -> [Album] {
+        func effectiveDate(_ album: Album) -> Date? {
+            switch (album.lastPlayed, recentPlays[album.id]) {
+            case let (server?, local?): Swift.max(server, local)
+            case let (server?, nil): server
+            case let (nil, local?): local
+            case (nil, nil): nil
+            }
+        }
+
+        return sorted { lhs, rhs in
+            switch (effectiveDate(lhs), effectiveDate(rhs)) {
             case let (lhsDate?, rhsDate?):
                 if lhsDate != rhsDate {
                     return lhsDate > rhsDate

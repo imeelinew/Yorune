@@ -126,7 +126,7 @@ struct IOSAlbumCollectionView: View {
     }
 
     private var sortedAlbums: [Album] {
-        filteredAlbums.sortedByLastPlayed()
+        filteredAlbums.sortedByLastPlayed(recentPlays: playback.recentAlbumPlays)
     }
 
     private var filteredAlbums: [Album] {

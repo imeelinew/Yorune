@@ -90,7 +90,7 @@ struct AlbumGridView: View {
     }
 
     private var sortedAlbums: [Album] {
-        filteredAlbums.sortedByLastPlayed()
+        filteredAlbums.sortedByLastPlayed(recentPlays: playback.recentAlbumPlays)
     }
 
     private var filteredAlbums: [Album] {
@@ -185,7 +185,7 @@ struct DownloadedAlbumGridView: View {
     }
 
     private var sortedAlbums: [Album] {
-        filteredAlbums.sortedByLastPlayed()
+        filteredAlbums.sortedByLastPlayed(recentPlays: playback.recentAlbumPlays)
     }
 
     private var filteredAlbums: [Album] {

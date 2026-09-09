@@ -144,6 +144,8 @@ final class PlaybackController: ObservableObject {
     @Published private(set) var repeatMode: RepeatMode
     @Published private(set) var queue: [Song] = []
     @Published private(set) var isQueuePresented = false
+    /// 本机记录的专辑最近播放时间，用于"最近收听"排序。
+    @Published private(set) var recentAlbumPlays: [String: Date] = [:]
     @Published var failure: PlaybackFailure?
 
     private let configurationStore: ServerConfigurationStore
@@ -177,6 +179,7 @@ final class PlaybackController: ObservableObject {
         static let shuffle = "playback.shuffle"
         static let repeatMode = "playback.repeatMode"
         static let state = "playback.state"
+        static let recentAlbumPlays = "playback.recentAlbumPlays"
     }
 
     private enum VolumeCurve {
@@ -227,6 +230,7 @@ final class PlaybackController: ObservableObject {
             rawValue: defaults.integer(forKey: DefaultsKey.repeatMode)
         ) ?? .off
         restorePlaybackState(from: defaults)
+        restoreRecentAlbumPlays(from: defaults)
 #if os(iOS)
         configureAudioSession()
 #endif
@@ -594,6 +598,9 @@ final class PlaybackController: ObservableObject {
         duration = song.duration
         pendingSeekOnReady = time
         playbackIntent = shouldPlay
+        if shouldPlay {
+            recordAlbumPlay(song.albumID)
+        }
         isPlaying = shouldPlay
         isBuffering = shouldPlay
         failure = nil
@@ -926,6 +933,25 @@ final class PlaybackController: ObservableObject {
             nowPlayingArtwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
             updateNowPlayingInfo()
         }
+    }
+
+    private func recordAlbumPlay(_ albumID: String) {
+        guard !albumID.isEmpty else { return }
+        recentAlbumPlays[albumID] = .now
+        // 只保留最近 500 张，避免无限增长。
+        if recentAlbumPlays.count > 500 {
+            let sorted = recentAlbumPlays.sorted { $0.value > $1.value }
+            recentAlbumPlays = Dictionary(uniqueKeysWithValues: sorted.prefix(500).map { ($0.key, $0.value) })
+        }
+        if let data = try? JSONEncoder().encode(recentAlbumPlays) {
+            UserDefaults.standard.set(data, forKey: DefaultsKey.recentAlbumPlays)
+        }
+    }
+
+    private func restoreRecentAlbumPlays(from defaults: UserDefaults) {
+        guard let data = defaults.data(forKey: DefaultsKey.recentAlbumPlays),
+              let plays = try? JSONDecoder().decode([String: Date].self, from: data) else { return }
+        recentAlbumPlays = plays
     }
 
     private func restorePlaybackState(from defaults: UserDefaults) {
