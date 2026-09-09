@@ -10,10 +10,19 @@ struct AlbumCardView: View {
                 .aspectRatio(1, contentMode: .fit)
                 .clipShape(.rect(cornerRadius: 8))
 
-            Text(album.title)
-                .font(.system(size: 13, weight: .medium))
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(album.title)
+                    .font(.system(size: 13, weight: .medium))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+
+                if !album.artist.isEmpty {
+                    Text(album.artist)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
         }
         .scaleEffect(isHovering ? 1.02 : 1)
         .shadow(

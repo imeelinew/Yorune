@@ -96,7 +96,10 @@ struct AlbumGridView: View {
     private var filteredAlbums: [Album] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return library.albums }
-        return library.albums.filter { $0.title.localizedStandardContains(query) }
+        return library.albums.filter {
+            $0.title.localizedStandardContains(query)
+                || $0.artist.localizedStandardContains(query)
+        }
     }
 }
 
@@ -191,7 +194,10 @@ struct DownloadedAlbumGridView: View {
     private var filteredAlbums: [Album] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return downloads.offlineAlbums }
-        return downloads.offlineAlbums.filter { $0.title.localizedStandardContains(query) }
+        return downloads.offlineAlbums.filter {
+            $0.title.localizedStandardContains(query)
+                || $0.artist.localizedStandardContains(query)
+        }
     }
 }
 
@@ -243,6 +249,7 @@ private struct AlbumDetailView: View {
                     .font(.title3)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
+                let artist = albumArtist(visibleSongs)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         albumHeader(visibleSongs)
@@ -254,6 +261,7 @@ private struct AlbumDetailView: View {
                                 AlbumTrackRow(
                                     song: song,
                                     index: index,
+                                    albumArtist: artist,
                                     isCurrent: playback.currentSong?.id == song.id,
                                     isPlaying: playback.isPlaying,
                                     isDownloaded: downloads.isDownloaded(song.id),
@@ -318,7 +326,8 @@ private struct AlbumDetailView: View {
     }
 
     private func albumHeader(_ songs: [Song]) -> some View {
-        HStack(alignment: .top, spacing: 20) {
+        let artist = albumArtist(songs)
+        return HStack(alignment: .top, spacing: 20) {
             AlbumArtworkView(url: album.artworkURL, cornerRadius: 8)
                 .frame(width: 180, height: 180)
 
@@ -333,7 +342,7 @@ private struct AlbumDetailView: View {
                     .fontWeight(.bold)
                     .lineLimit(2)
 
-                if let artist = songs.first?.artist, !artist.isEmpty {
+                if !artist.isEmpty {
                     Text(artist)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(.secondary)
@@ -473,9 +482,22 @@ private struct AlbumDetailView: View {
             : "arrow.down.circle"
     }
 
+    private func albumArtist(_ songs: [Song]) -> String {
+        if !album.artist.isEmpty { return album.artist }
+        return songs.first?.artist ?? ""
+    }
+
     private func albumMetadata(_ songs: [Song]) -> String {
+        var parts: [String] = []
+        if let genre = album.genre, !genre.isEmpty {
+            parts.append(genre)
+        }
+        if let year = album.year, year > 0 {
+            parts.append(String(localized: "album.year", defaultValue: "\(year)"))
+        }
         let totalDuration = songs.reduce(0) { $0 + $1.duration }
-        return "\(songs.count) • \(formatDuration(totalDuration))"
+        parts.append("\(songs.count) • \(formatDuration(totalDuration))")
+        return parts.joined(separator: " · ")
     }
 
     private func formatDuration(_ seconds: Double) -> String {
@@ -506,11 +528,16 @@ private struct AlbumDetailView: View {
 private struct AlbumTrackRow: View {
     let song: Song
     let index: Int
+    let albumArtist: String
     let isCurrent: Bool
     let isPlaying: Bool
     let isDownloaded: Bool
     let isDownloading: Bool
     let play: () -> Void
+
+    private var showsArtist: Bool {
+        !song.artist.isEmpty && song.artist != albumArtist
+    }
 
     var body: some View {
         Button(action: play) {
@@ -534,7 +561,7 @@ private struct AlbumTrackRow: View {
                         .foregroundStyle(isCurrent ? YoruneStyle.accent : Color.primary)
                         .lineLimit(1)
 
-                    if !song.artist.isEmpty {
+                    if showsArtist {
                         Text(song.artist)
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
