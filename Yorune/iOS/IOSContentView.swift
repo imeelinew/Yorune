@@ -293,7 +293,7 @@ private struct IOSAlbumCollectionView: View {
             } else {
                 ScrollView {
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
-                        ForEach(filteredAlbums) { album in
+                        ForEach(sortedAlbums) { album in
                             NavigationLink(value: album) {
                                 VStack(alignment: .leading, spacing: 8) {
                                     AlbumArtworkView(url: album.artworkURL)
@@ -328,6 +328,10 @@ private struct IOSAlbumCollectionView: View {
                 isOfflineLibrary: canRemoveDownloads
             )
         }
+    }
+
+    private var sortedAlbums: [Album] {
+        filteredAlbums.sortedByLastPlayed()
     }
 
     private var filteredAlbums: [Album] {

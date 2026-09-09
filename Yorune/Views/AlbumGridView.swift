@@ -61,7 +61,7 @@ struct AlbumGridView: View {
             } else {
                 ScrollView {
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 24) {
-                        ForEach(filteredAlbums) { album in
+                        ForEach(sortedAlbums) { album in
                             NavigationLink(value: album) {
                                 AlbumCardView(album: album)
                             }
@@ -87,6 +87,10 @@ struct AlbumGridView: View {
                 }
             )
         }
+    }
+
+    private var sortedAlbums: [Album] {
+        filteredAlbums.sortedByLastPlayed()
     }
 
     private var filteredAlbums: [Album] {
@@ -145,7 +149,7 @@ struct DownloadedAlbumGridView: View {
             } else {
                 ScrollView {
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 24) {
-                        ForEach(filteredAlbums) { album in
+                        ForEach(sortedAlbums) { album in
                             NavigationLink(value: album) {
                                 AlbumCardView(album: album)
                             }
@@ -178,6 +182,10 @@ struct DownloadedAlbumGridView: View {
                 isOfflineLibrary: true
             )
         }
+    }
+
+    private var sortedAlbums: [Album] {
+        filteredAlbums.sortedByLastPlayed()
     }
 
     private var filteredAlbums: [Album] {

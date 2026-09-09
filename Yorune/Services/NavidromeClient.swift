@@ -56,7 +56,8 @@ actor NavidromeClient {
                 Album(
                     id: album.id,
                     title: album.name,
-                    artworkURL: try artworkURL(for: album.coverArt)
+                    artworkURL: try artworkURL(for: album.coverArt),
+                    lastPlayed: album.played?.date
                 )
             })
 
@@ -290,6 +291,25 @@ private struct SubsonicAlbum: Decodable {
     let id: String
     let name: String
     let coverArt: String?
+    let played: SubsonicDate?
+}
+
+private struct SubsonicDate: Decodable {
+    let date: Date?
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        date = (try? container.decode(String.self)).flatMap(Self.parse)
+    }
+
+    // Navidrome 写出的小数秒位数不定，统一去掉小数秒，秒级精度足够排序使用。
+    private static func parse(_ raw: String) -> Date? {
+        var value = raw
+        if let range = value.range(of: #"\.\d+"#, options: .regularExpression) {
+            value.removeSubrange(range)
+        }
+        return ISO8601DateFormatter().date(from: value)
+    }
 }
 
 private struct SubsonicAlbumDetail: Decodable {

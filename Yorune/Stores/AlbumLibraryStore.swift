@@ -700,10 +700,11 @@ final class DownloadStore: ObservableObject {
             return Album(
                 id: albumID,
                 title: song.albumTitle,
-                artworkURL: localArtworkURL(for: albumID)
+                artworkURL: localArtworkURL(for: albumID),
+                lastPlayed: nil
             )
         }
-        .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+        .sortedByLastPlayed()
     }
 
     private func localArtworkURL(for albumID: String) -> URL? {
