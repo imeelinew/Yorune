@@ -40,9 +40,6 @@
 		110000000000000000000001 /* YoruneiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000001 /* YoruneiOSApp.swift */; };
 		110000000000000000000002 /* IOSContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000002 /* IOSContentView.swift */; };
 		110000000000000000000003 /* IOSSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000003 /* IOSSettingsView.swift */; };
-		110000000000000000000020 /* IOSAlbumGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000007 /* IOSAlbumGridView.swift */; };
-		110000000000000000000021 /* IOSAlbumDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000008 /* IOSAlbumDetailView.swift */; };
-		110000000000000000000022 /* IOSNowPlayingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000009 /* IOSNowPlayingView.swift */; };
 		110000000000000000000004 /* Album.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000002 /* Album.swift */; };
 		110000000000000000000005 /* ServerConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000009 /* ServerConfiguration.swift */; };
 		110000000000000000000006 /* AppLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000014 /* AppLanguage.swift */; };
@@ -58,6 +55,9 @@
 		110000000000000000000010 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001C /* Localizable.xcstrings */; };
 		110000000000000000000011 /* Yorune.icon in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000013 /* Yorune.icon */; };
 		110000000000000000000012 /* PlayerBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001F /* PlayerBar.swift */; };
+		110000000000000000000020 /* IOSAlbumGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000007 /* IOSAlbumGridView.swift */; };
+		110000000000000000000021 /* IOSAlbumDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000008 /* IOSAlbumDetailView.swift */; };
+		110000000000000000000022 /* IOSNowPlayingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000009 /* IOSNowPlayingView.swift */; };
 		120000000000000000000001 /* YoruneCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220000000000000000000001 /* YoruneCoreTests.swift */; };
 		D00000000000000000000001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = C00000000000000000000002 /* Sparkle */; };
 /* End PBXBuildFile section */
@@ -107,12 +107,12 @@
 		210000000000000000000001 /* YoruneiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YoruneiOSApp.swift; sourceTree = "<group>"; };
 		210000000000000000000002 /* IOSContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSContentView.swift; sourceTree = "<group>"; };
 		210000000000000000000003 /* IOSSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSSettingsView.swift; sourceTree = "<group>"; };
-		210000000000000000000007 /* IOSAlbumGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAlbumGridView.swift; sourceTree = "<group>"; };
-		210000000000000000000008 /* IOSAlbumDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAlbumDetailView.swift; sourceTree = "<group>"; };
-		210000000000000000000009 /* IOSNowPlayingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSNowPlayingView.swift; sourceTree = "<group>"; };
 		210000000000000000000004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		210000000000000000000005 /* YoruneiOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = YoruneiOS.entitlements; sourceTree = "<group>"; };
 		210000000000000000000006 /* Yorune.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Yorune.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		210000000000000000000007 /* IOSAlbumGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAlbumGridView.swift; sourceTree = "<group>"; };
+		210000000000000000000008 /* IOSAlbumDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAlbumDetailView.swift; sourceTree = "<group>"; };
+		210000000000000000000009 /* IOSNowPlayingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSNowPlayingView.swift; sourceTree = "<group>"; };
 		220000000000000000000001 /* YoruneCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YoruneCoreTests.swift; sourceTree = "<group>"; };
 		220000000000000000000002 /* YoruneTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = YoruneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -498,6 +498,14 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		E00000000000000000000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 500000000000000000000002 /* Yorune iOS */;
+			targetProxy = E00000000000000000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
 		A00000000000000000000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -544,9 +552,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = Yorune;
+				CODE_SIGN_ENTITLEMENTS = Yorune/Support/Yorune.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CODE_SIGN_ENTITLEMENTS = Yorune/Support/Yorune.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5Q5QT76MJU;
@@ -581,9 +589,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = Yorune;
+				CODE_SIGN_ENTITLEMENTS = Yorune/Support/Yorune.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CODE_SIGN_ENTITLEMENTS = Yorune/Support/Yorune.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5Q5QT76MJU;
@@ -620,7 +628,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = Yorune;
 				CODE_SIGN_ENTITLEMENTS = Yorune/iOS/YoruneiOS.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 10;
 				DEVELOPMENT_TEAM = 5Q5QT76MJU;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Yorune/iOS/Info.plist;
@@ -629,7 +637,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.eli.Yorune.iOS;
 				PRODUCT_NAME = Yorune;
 				SDKROOT = iphoneos;
@@ -647,7 +655,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = Yorune;
 				CODE_SIGN_ENTITLEMENTS = Yorune/iOS/YoruneiOS.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 10;
 				DEVELOPMENT_TEAM = 5Q5QT76MJU;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Yorune/iOS/Info.plist;
@@ -656,7 +664,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.eli.Yorune.iOS;
 				PRODUCT_NAME = Yorune;
 				SDKROOT = iphoneos;
@@ -758,14 +766,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin PBXTargetDependency section */
-		E00000000000000000000002 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 500000000000000000000002 /* Yorune iOS */;
-			targetProxy = E00000000000000000000001 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin XCRemoteSwiftPackageReference section */
 		B00000000000000000000001 /* XCRemoteSwiftPackageReference "MacAppSettingsUI" */ = {
