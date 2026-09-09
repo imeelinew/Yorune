@@ -110,6 +110,46 @@ struct AlbumArtworkView: View {
     }
 }
 
+/// 专辑详情页顶部的封面色彩晕染背景，macOS 与 iOS 共用。
+struct AlbumDetailBackground: View {
+    let url: URL?
+    var maxHeight: CGFloat = 440
+    var lightOpacity: Double = 0.18
+    var darkOpacity: Double = 0.38
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            platformBackground
+
+            GeometryReader { geometry in
+                AlbumArtworkView(url: url, cornerRadius: 0)
+                    .frame(width: geometry.size.width, height: min(maxHeight, geometry.size.height))
+                    .scaleEffect(1.15)
+                    .blur(radius: 70)
+                    .opacity(colorScheme == .dark ? darkOpacity : lightOpacity)
+                    .mask {
+                        LinearGradient(
+                            colors: [.black, .black.opacity(0.55), .clear],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    }
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private var platformBackground: Color {
+#if canImport(AppKit)
+        Color(nsColor: .windowBackgroundColor)
+#else
+        Color(uiColor: .systemBackground)
+#endif
+    }
+}
+
 enum ArtworkCacheKey {
     private static let volatileQueryNames: Set<String> = [
         "c", "f", "s", "t", "u", "v"

@@ -102,7 +102,7 @@ final class AlbumLibraryStore: ObservableObject {
 
     func fetchSongs(in album: Album) async throws -> [Song] {
         if let songs = songsByAlbumID[album.id], !songs.isEmpty {
-            return songs
+            return Self.unifyingArtwork(songs, with: album)
         }
         guard let configuration = configurationStore.configuration else {
             throw ServerConfigurationError.invalid
@@ -121,7 +121,7 @@ final class AlbumLibraryStore: ObservableObject {
                         duration: song.duration,
                         trackNumber: song.trackNumber,
                         discNumber: song.discNumber,
-                        artworkURL: song.artworkURL ?? album.artworkURL
+                        artworkURL: album.artworkURL ?? song.artworkURL
                     )
                 }
             songsByAlbumID[album.id] = songs
@@ -130,10 +130,30 @@ final class AlbumLibraryStore: ObservableObject {
         } catch {
             if let cached = cachedSongs(for: album.id, configuration: configuration),
                !cached.isEmpty {
-                songsByAlbumID[album.id] = cached
-                return cached
+                let unified = Self.unifyingArtwork(cached, with: album)
+                songsByAlbumID[album.id] = unified
+                return unified
             }
             throw error
+        }
+    }
+
+    /// 旧缓存里的歌曲可能带有各自的封面地址，统一改为专辑封面地址以共享图片缓存。
+    private static func unifyingArtwork(_ songs: [Song], with album: Album) -> [Song] {
+        guard let albumArtworkURL = album.artworkURL else { return songs }
+        return songs.map { song in
+            guard song.artworkURL != albumArtworkURL else { return song }
+            return Song(
+                id: song.id,
+                title: song.title,
+                artist: song.artist,
+                albumID: song.albumID,
+                albumTitle: song.albumTitle,
+                duration: song.duration,
+                trackNumber: song.trackNumber,
+                discNumber: song.discNumber,
+                artworkURL: albumArtworkURL
+            )
         }
     }
 

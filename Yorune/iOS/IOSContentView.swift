@@ -23,7 +23,7 @@ struct IOSContentView: View {
         .sheet(isPresented: $isNowPlayingPresented) {
             IOSNowPlayingView(playback: appModel.playback)
         }
-        .sheet(isPresented: standaloneQueuePresented) {
+        .sheet(isPresented: queuePresented) {
             IOSQueueView(playback: appModel.playback)
         }
         .onChange(of: appModel.playback.currentSong == nil) { _, isEmpty in
@@ -185,10 +185,9 @@ struct IOSContentView: View {
         )
     }
 
-    // 正在播放页打开时，队列由它自己的 sheet 呈现；否则从根视图呈现。
-    private var standaloneQueuePresented: Binding<Bool> {
+    private var queuePresented: Binding<Bool> {
         Binding(
-            get: { appModel.playback.isQueuePresented && !isNowPlayingPresented },
+            get: { appModel.playback.isQueuePresented },
             set: { isPresented in
                 if !isPresented, appModel.playback.isQueuePresented {
                     appModel.playback.toggleQueueInspector()

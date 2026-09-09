@@ -4,23 +4,37 @@ struct Album: Identifiable, Sendable, Hashable, Codable {
     let id: String
     let title: String
     let artist: String
+    let genre: String?
+    let year: Int?
     let artworkURL: URL?
     let lastPlayed: Date?
 
-    init(id: String, title: String, artist: String, artworkURL: URL?, lastPlayed: Date?) {
+    init(
+        id: String,
+        title: String,
+        artist: String,
+        genre: String? = nil,
+        year: Int? = nil,
+        artworkURL: URL?,
+        lastPlayed: Date?
+    ) {
         self.id = id
         self.title = title
         self.artist = artist
+        self.genre = genre
+        self.year = year
         self.artworkURL = artworkURL
         self.lastPlayed = lastPlayed
     }
 
-    // 旧版磁盘缓存没有 artist 字段，缺省为空字符串以保持缓存可读。
+    // 旧版磁盘缓存没有 artist/genre/year 字段，缺省处理以保持缓存可读。
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(String.self, forKey: .id)
         title = try container.decode(String.self, forKey: .title)
         artist = try container.decodeIfPresent(String.self, forKey: .artist) ?? ""
+        genre = try container.decodeIfPresent(String.self, forKey: .genre)
+        year = try container.decodeIfPresent(Int.self, forKey: .year)
         artworkURL = try container.decodeIfPresent(URL.self, forKey: .artworkURL)
         lastPlayed = try container.decodeIfPresent(Date.self, forKey: .lastPlayed)
     }

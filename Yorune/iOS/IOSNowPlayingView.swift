@@ -1,3 +1,4 @@
+import MediaPlayer
 import SwiftUI
 
 struct IOSNowPlayingView: View {
@@ -5,18 +6,29 @@ struct IOSNowPlayingView: View {
 
     @State private var isSeeking = false
     @State private var pendingSeekTime = 0.0
+    @State private var isQueueVisible = false
 
     var body: some View {
         VStack(spacing: 0) {
-            Spacer(minLength: 12)
+            if isQueueVisible {
+                queuePane
+                    .frame(maxHeight: .infinity)
+                    .transition(.opacity)
+            } else {
+                Spacer(minLength: 12)
 
-            artwork
-                .frame(maxHeight: .infinity)
+                artwork
+                    .frame(maxHeight: .infinity)
+                    .transition(.opacity)
 
-            Spacer(minLength: 24)
+                Spacer(minLength: 24)
+            }
 
             VStack(spacing: 28) {
-                songInfo
+                if !isQueueVisible {
+                    songInfo
+                        .transition(.opacity)
+                }
                 progress
                 transportControls
                 volume
@@ -26,14 +38,12 @@ struct IOSNowPlayingView: View {
             .padding(.bottom, 8)
         }
         .padding(.top, 8)
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: isQueueVisible)
         .environment(\.colorScheme, .dark)
         .tint(.white)
         .presentationDragIndicator(.visible)
         .presentationBackground {
             IOSNowPlayingBackground(url: playback.currentSong?.artworkURL)
-        }
-        .sheet(isPresented: queuePresented) {
-            IOSQueueView(playback: playback)
         }
     }
 
@@ -64,6 +74,82 @@ struct IOSNowPlayingView: View {
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - Queue Pane
+
+    private var queuePane: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 14) {
+                AlbumArtworkView(url: playback.currentSong?.artworkURL, cornerRadius: 8)
+                    .frame(width: 64, height: 64)
+                    .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(playback.currentSong?.title ?? "")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    Text(playback.currentSong?.artist ?? "")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.6))
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+            }
+
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Up Next")
+                        .font(.title3.bold())
+                        .foregroundStyle(.white)
+                    if let albumTitle = playback.currentSong?.albumTitle, !albumTitle.isEmpty {
+                        Text("From \(albumTitle)")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.6))
+                            .lineLimit(1)
+                    }
+                }
+                Spacer()
+                if !playback.upcomingSongs.isEmpty {
+                    Button("Clear", action: playback.clearUpcoming)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.white.opacity(0.75))
+                }
+            }
+
+            if playback.upcomingSongs.isEmpty {
+                Text("No Queue")
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.5))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List {
+                    ForEach(playback.upcomingSongs) { song in
+                        IOSNowPlayingQueueRow(song: song) {
+                            playback.playQueuedSong(song)
+                        }
+                        .contextMenu {
+                            Button("Remove from Queue", systemImage: "minus.circle", role: .destructive) {
+                                playback.removeFromQueue(song)
+                            }
+                        }
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+                    }
+                    .onMove(perform: playback.moveUpcoming)
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .environment(\.editMode, .constant(.active))
+                .environment(\.defaultMinListRowHeight, 44)
+                .padding(.horizontal, -4)
+            }
+        }
+        .padding(.horizontal, 28)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
     }
 
     private var progress: some View {
@@ -152,15 +238,9 @@ struct IOSNowPlayingView: View {
         HStack(spacing: 12) {
             Image(systemName: "speaker.fill")
                 .font(.system(size: 12))
-            Slider(
-                value: Binding(
-                    get: { playback.volume },
-                    set: playback.setVolume
-                ),
-                in: 0 ... 1
-            )
-            .tint(.white.opacity(0.85))
-            .accessibilityLabel("Volume")
+            IOSSystemVolumeSlider()
+                .frame(height: 24)
+                .accessibilityLabel("Volume")
             Image(systemName: "speaker.wave.3.fill")
                 .font(.system(size: 12))
         }
@@ -182,10 +262,11 @@ struct IOSNowPlayingView: View {
             Spacer()
             IOSNowPlayingActionButton(
                 systemImage: "list.bullet",
-                isActive: playback.isQueuePresented,
-                accessibilityLabel: "Queue",
-                action: playback.toggleQueueInspector
-            )
+                isActive: isQueueVisible,
+                accessibilityLabel: "Queue"
+            ) {
+                isQueueVisible.toggle()
+            }
             Spacer()
             IOSNowPlayingActionButton(
                 systemImage: playback.repeatMode == .one ? "repeat.1" : "repeat",
@@ -202,16 +283,32 @@ struct IOSNowPlayingView: View {
     private var displayedElapsedTime: Double {
         isSeeking ? pendingSeekTime : playback.elapsedTime
     }
+}
 
-    private var queuePresented: Binding<Bool> {
-        Binding(
-            get: { playback.isQueuePresented },
-            set: { isPresented in
-                if !isPresented, playback.isQueuePresented {
-                    playback.toggleQueueInspector()
+private struct IOSNowPlayingQueueRow: View {
+    let song: Song
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                AlbumArtworkView(url: song.artworkURL, cornerRadius: 6)
+                    .frame(width: 48, height: 48)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(song.title)
+                        .font(.body)
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    Text(song.artist)
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.6))
+                        .lineLimit(1)
                 }
+                Spacer(minLength: 0)
             }
-        )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -403,4 +500,38 @@ private func formatPlaybackTime(_ seconds: Double) -> String {
     guard seconds.isFinite, seconds > 0 else { return "0:00" }
     let totalSeconds = Int(seconds.rounded(.down))
     return "\(totalSeconds / 60):\(String(format: "%02d", totalSeconds % 60))"
+}
+
+/// 系统音量滑杆：直接显示并控制设备音量，与硬件按键、控制中心保持一致。
+struct IOSSystemVolumeSlider: UIViewRepresentable {
+    var tint: UIColor = .white
+
+    func makeUIView(context: Context) -> MPVolumeView {
+        let view = MPVolumeView()
+        view.tintColor = tint.withAlphaComponent(0.85)
+        view.setVolumeThumbImage(UIImage(), for: .normal)
+        view.setMinimumVolumeSliderImage(
+            Self.trackImage(color: tint.withAlphaComponent(0.85)),
+            for: .normal
+        )
+        view.setMaximumVolumeSliderImage(
+            Self.trackImage(color: tint.withAlphaComponent(0.3)),
+            for: .normal
+        )
+        return view
+    }
+
+    func updateUIView(_ uiView: MPVolumeView, context: Context) {}
+
+    private static func trackImage(color: UIColor) -> UIImage {
+        let size = CGSize(width: 12, height: 7)
+        let image = UIGraphicsImageRenderer(size: size).image { context in
+            color.setFill()
+            UIBezierPath(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: 3.5).fill()
+        }
+        return image.resizableImage(
+            withCapInsets: UIEdgeInsets(top: 0, left: 4, bottom: 0, right: 4),
+            resizingMode: .stretch
+        )
+    }
 }

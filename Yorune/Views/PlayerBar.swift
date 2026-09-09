@@ -533,6 +533,11 @@ private struct PlayerVolumePopover: View {
             Image(systemName: "speaker.fill")
                 .foregroundStyle(.secondary)
 
+#if os(iOS)
+            IOSSystemVolumeSlider(tint: .label)
+                .frame(height: 24)
+                .accessibilityLabel("Volume")
+#else
             Slider(
                 value: Binding(
                     get: { playback.volume },
@@ -541,6 +546,7 @@ private struct PlayerVolumePopover: View {
                 in: 0 ... 1
             )
             .accessibilityLabel("Volume")
+#endif
 
             Image(systemName: "speaker.wave.3.fill")
                 .foregroundStyle(.secondary)

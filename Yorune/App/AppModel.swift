@@ -189,6 +189,16 @@ final class PlaybackController: ObservableObject {
         }
     }
 
+    /// macOS 使用应用内音量并套用听感曲线；iOS 交给系统音量控制，播放器保持满增益。
+    private var playerGain: Float {
+        if isMutedForUITesting { return 0 }
+#if os(iOS)
+        return 1
+#else
+        return VolumeCurve.gain(for: volume)
+#endif
+    }
+
     var canGoPrevious: Bool {
         currentSong != nil
     }
@@ -396,7 +406,7 @@ final class PlaybackController: ObservableObject {
     func setVolume(_ value: Double) {
         guard value.isFinite else { return }
         volume = min(max(value, 0), 1)
-        player?.volume = isMutedForUITesting ? 0 : VolumeCurve.gain(for: volume)
+        player?.volume = playerGain
         UserDefaults.standard.set(volume, forKey: DefaultsKey.volume)
     }
 
@@ -619,7 +629,7 @@ final class PlaybackController: ObservableObject {
                     self.player = player
                     observePlayer(player)
                 }
-                player?.volume = isMutedForUITesting ? 0 : VolumeCurve.gain(for: volume)
+                player?.volume = playerGain
 
                 observeItem(item)
                 if playbackIntent {

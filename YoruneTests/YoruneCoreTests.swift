@@ -290,7 +290,7 @@ final class YoruneCoreTests: XCTestCase {
 
     func testNavidromeClientMapsAlbumMetadataAndArtwork() async throws {
         let session = makeSession(
-            body: #"{"subsonic-response":{"status":"ok","version":"1.16.1","albumList2":{"album":[{"id":"album-1","name":"Imaginal Disk","artist":"Magdalena Bay","coverArt":"album-cover","played":"2026-08-30T21:14:33.456Z"}]}}}"#
+            body: #"{"subsonic-response":{"status":"ok","version":"1.16.1","albumList2":{"album":[{"id":"album-1","name":"Imaginal Disk","artist":"Magdalena Bay","genre":"Pop","year":2024,"coverArt":"album-cover","played":"2026-08-30T21:14:33.456Z"}]}}}"#
         )
         let client = NavidromeClient(
             configuration: makeServerConfiguration(),
@@ -303,6 +303,8 @@ final class YoruneCoreTests: XCTestCase {
         XCTAssertEqual(album.id, "album-1")
         XCTAssertEqual(album.title, "Imaginal Disk")
         XCTAssertEqual(album.artist, "Magdalena Bay")
+        XCTAssertEqual(album.genre, "Pop")
+        XCTAssertEqual(album.year, 2024)
         XCTAssertEqual(
             album.lastPlayed,
             ISO8601DateFormatter().date(from: "2026-08-30T21:14:33Z")
@@ -341,7 +343,8 @@ final class YoruneCoreTests: XCTestCase {
                 resolvingAgainstBaseURL: false
             )?.queryItems?.first(where: { $0.name == "id" })?.value
         }
-        XCTAssertEqual(artworkIDs, ["album-cover", "song-cover"])
+        // 歌曲统一沿用专辑封面，避免播放条/队列缩略图使用不同缓存键而重新加载。
+        XCTAssertEqual(artworkIDs, ["album-cover", "album-cover"])
     }
 
     func testArtworkCacheKeyIgnoresRotatingAuthenticationParameters() throws {

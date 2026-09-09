@@ -35,8 +35,19 @@ struct IOSAlbumDetailView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            AlbumDetailBackground(
+                url: album.artworkURL,
+                maxHeight: 560,
+                lightOpacity: 0.45,
+                darkOpacity: 0.5
+            )
+            .ignoresSafeArea()
+        }
         .navigationTitle(album.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
         .task(id: album.id) {
             await load()
         }
@@ -85,24 +96,39 @@ struct IOSAlbumDetailView: View {
                     .padding(.top, 2)
             }
 
+            if let metadata = albumMetadata {
+                Text(metadata)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .padding(.top, 6)
+            }
+
             actionButtons(songs)
-                .padding(.top, 18)
+                .padding(.top, 16)
         }
     }
 
+    private var albumMetadata: String? {
+        var parts: [String] = []
+        if let genre = album.genre, !genre.isEmpty {
+            parts.append(genre)
+        }
+        if let year = album.year, year > 0 {
+            parts.append(String(localized: "album.year", defaultValue: "\(String(year))"))
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
     private func actionButtons(_ songs: [Song]) -> some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 12) {
             Button {
                 shufflePlay(songs)
             } label: {
                 Image(systemName: "shuffle")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(playback.isShuffling ? YoruneStyle.accent : .primary)
-                    .frame(width: 26, height: 26)
+                    .font(.system(size: 16, weight: .semibold))
             }
-            .buttonStyle(.glass)
-            .buttonBorderShape(.circle)
-            .controlSize(.large)
+            .buttonStyle(IOSAlbumActionButtonStyle(shape: .circle))
             .disabled(songs.isEmpty)
             .accessibilityLabel("Shuffle")
 
@@ -115,18 +141,15 @@ struct IOSAlbumDetailView: View {
                 }
             } label: {
                 Label("Play", systemImage: "play.fill")
-                    .font(.body.weight(.semibold))
+                    .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
-                    .frame(height: 26)
             }
-            .buttonStyle(.glass)
-            .buttonBorderShape(.capsule)
-            .controlSize(.large)
+            .buttonStyle(IOSAlbumActionButtonStyle(shape: .capsule))
             .disabled(songs.isEmpty)
 
             downloadButton(songs)
         }
-        .frame(maxWidth: 400)
+        .frame(maxWidth: 340)
     }
 
     @ViewBuilder
@@ -144,25 +167,18 @@ struct IOSAlbumDetailView: View {
                 downloads.download(pendingSongs)
             }
         } label: {
-            Group {
-                if anyDownloading {
-                    ProgressView()
-                        .controlSize(.regular)
-                } else if allDownloaded || isOfflineLibrary {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(YoruneStyle.accent)
-                } else {
-                    Image(systemName: "arrow.down")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.primary)
-                }
+            if anyDownloading {
+                ProgressView()
+                    .controlSize(.small)
+            } else if allDownloaded || isOfflineLibrary {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 16, weight: .semibold))
+            } else {
+                Image(systemName: "arrow.down")
+                    .font(.system(size: 16, weight: .semibold))
             }
-            .frame(width: 26, height: 26)
         }
-        .buttonStyle(.glass)
-        .buttonBorderShape(.circle)
-        .controlSize(.large)
+        .buttonStyle(IOSAlbumActionButtonStyle(shape: .circle))
         .disabled(songs.isEmpty || (anyDownloading && pendingSongs.isEmpty))
         .accessibilityLabel(allDownloaded || isOfflineLibrary ? "Remove Downloads" : "Download")
         .confirmationDialog(
@@ -342,5 +358,35 @@ private struct IOSSongRow<Actions: View>: View {
         .contextMenu {
             actions()
         }
+    }
+}
+
+/// 专辑页操作按钮：浅灰底 + 主题色前景，不使用 Liquid Glass。
+private struct IOSAlbumActionButtonStyle: ButtonStyle {
+    enum Shape {
+        case circle
+        case capsule
+    }
+
+    let shape: Shape
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(YoruneStyle.accent)
+            .frame(width: shape == .circle ? 44 : nil, height: 44)
+            .frame(maxWidth: shape == .capsule ? .infinity : nil)
+            .background {
+                switch shape {
+                case .circle:
+                    Circle().fill(Color(uiColor: .secondarySystemFill))
+                case .capsule:
+                    Capsule().fill(Color(uiColor: .secondarySystemFill))
+                }
+            }
+            .contentShape(shape == .circle ? AnyShape(Circle()) : AnyShape(Capsule()))
+            .opacity(isEnabled ? (configuration.isPressed ? 0.6 : 1) : 0.4)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(YoruneStyle.quickAnimation, value: configuration.isPressed)
     }
 }

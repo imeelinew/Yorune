@@ -595,31 +595,3 @@ private struct AlbumTrackRowButtonStyle: ButtonStyle {
             }
     }
 }
-
-private struct AlbumDetailBackground: View {
-    let url: URL?
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        ZStack(alignment: .top) {
-            Color(nsColor: .windowBackgroundColor)
-
-            GeometryReader { geometry in
-                AlbumArtworkView(url: url, cornerRadius: 0)
-                    .frame(width: geometry.size.width, height: min(440, geometry.size.height))
-                    .scaleEffect(1.15)
-                    .blur(radius: 70)
-                    .opacity(colorScheme == .dark ? 0.38 : 0.18)
-                    .mask {
-                        LinearGradient(
-                            colors: [.black, .black.opacity(0.55), .clear],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    }
-            }
-        }
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
-}

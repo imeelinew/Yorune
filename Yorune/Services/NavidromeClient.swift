@@ -57,6 +57,8 @@ actor NavidromeClient {
                     id: album.id,
                     title: album.name,
                     artist: album.artist ?? "",
+                    genre: album.genre?.trimmingCharacters(in: .whitespacesAndNewlines),
+                    year: album.year,
                     artworkURL: try artworkURL(for: album.coverArt),
                     lastPlayed: album.played?.date
                 )
@@ -102,7 +104,9 @@ actor NavidromeClient {
                     duration: song.duration ?? 0,
                     trackNumber: song.track,
                     discNumber: song.discNumber,
-                    artworkURL: try artworkURL(for: song.coverArt) ?? albumArtworkURL
+                    // 统一使用专辑封面地址：歌曲自带的 coverArt id 不同会产生独立缓存键，
+                    // 导致播放条/队列里的缩略图重新下载而闪一下空白。
+                    artworkURL: try albumArtworkURL ?? artworkURL(for: song.coverArt)
                 )
             }
             .sorted(by: Self.songSort)
@@ -292,6 +296,8 @@ private struct SubsonicAlbum: Decodable {
     let id: String
     let name: String
     let artist: String?
+    let genre: String?
+    let year: Int?
     let coverArt: String?
     let played: SubsonicDate?
 }
