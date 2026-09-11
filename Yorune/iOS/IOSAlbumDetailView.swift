@@ -11,10 +11,26 @@ struct IOSAlbumDetailView: View {
     @ObservedObject var downloads: DownloadStore
     @ObservedObject var playback: PlaybackController
     let loadSongs: @MainActor (Album) async throws -> [Song]
-    var isOfflineLibrary = false
+    let isOfflineLibrary: Bool
 
-    @State private var state: LoadState = .loading
+    @State private var state: LoadState
     @State private var isRemoveConfirmationPresented = false
+
+    init(
+        album: Album,
+        downloads: DownloadStore,
+        playback: PlaybackController,
+        initialSongs: [Song]?,
+        loadSongs: @escaping @MainActor (Album) async throws -> [Song],
+        isOfflineLibrary: Bool = false
+    ) {
+        self.album = album
+        self.downloads = downloads
+        self.playback = playback
+        self.loadSongs = loadSongs
+        self.isOfflineLibrary = isOfflineLibrary
+        _state = State(initialValue: initialSongs.map(LoadState.loaded) ?? .loading)
+    }
 
     var body: some View {
         Group {
@@ -273,12 +289,17 @@ struct IOSAlbumDetailView: View {
     }
 
     private func load() async {
-        state = .loading
+        if case .loaded = state {
+            // 已有内容时静默刷新，不再退回加载态。
+        } else {
+            state = .loading
+        }
         do {
             let songs = try await loadSongs(album)
             downloads.remember(songs)
             state = .loaded(songs)
         } catch {
+            if case .loaded = state { return }
             state = .failed
         }
     }

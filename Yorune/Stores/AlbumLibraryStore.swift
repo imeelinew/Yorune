@@ -24,8 +24,10 @@ final class AlbumLibraryStore: ObservableObject {
     private let fileManager: FileManager
     private var songsByAlbumID: [String: [Song]] = [:]
     private var lastSuccessfulSyncDate: Date?
+    private var prefetchTask: Task<Void, Never>?
 
     private static let automaticSyncInterval: TimeInterval = 60
+    private static let prefetchConcurrency = 4
 
     init(
         configurationStore: ServerConfigurationStore,
@@ -54,6 +56,7 @@ final class AlbumLibraryStore: ObservableObject {
     private func reload(ignoringAutomaticSyncThrottle: Bool) async {
         guard !isSyncing, state != .loading else { return }
         guard let configuration = configurationStore.configuration else {
+            prefetchTask?.cancel()
             albums = []
             songsByAlbumID = [:]
             state = .needsConfiguration
@@ -90,6 +93,7 @@ final class AlbumLibraryStore: ObservableObject {
             persistLibraryCache(for: configuration)
             state = .loaded
             lastSuccessfulSyncDate = .now
+            prefetchMissingSongs(using: configuration)
         } catch {
             restoreLibrary(
                 configuration: configuration,
@@ -100,30 +104,22 @@ final class AlbumLibraryStore: ObservableObject {
         }
     }
 
+    /// 同步返回已缓存的曲目列表，供详情页在首帧直接渲染，避免多余的加载态。
+    func cachedSongs(in album: Album) -> [Song]? {
+        guard let songs = songsByAlbumID[album.id], !songs.isEmpty else { return nil }
+        return Self.unifyingArtwork(songs, with: album)
+    }
+
     func fetchSongs(in album: Album) async throws -> [Song] {
-        if let songs = songsByAlbumID[album.id], !songs.isEmpty {
-            return Self.unifyingArtwork(songs, with: album)
+        if let songs = cachedSongs(in: album) {
+            return songs
         }
         guard let configuration = configurationStore.configuration else {
             throw ServerConfigurationError.invalid
         }
 
         do {
-            let songs = try await NavidromeClient(configuration: configuration)
-                .fetchSongs(in: album.id)
-                .map { song in
-                    Song(
-                        id: song.id,
-                        title: song.title,
-                        artist: song.artist,
-                        albumID: song.albumID,
-                        albumTitle: song.albumTitle,
-                        duration: song.duration,
-                        trackNumber: song.trackNumber,
-                        discNumber: song.discNumber,
-                        artworkURL: album.artworkURL ?? song.artworkURL
-                    )
-                }
+            let songs = try await Self.downloadSongs(in: album, configuration: configuration)
             songsByAlbumID[album.id] = songs
             persistLibraryCache(for: configuration)
             return songs
@@ -135,6 +131,80 @@ final class AlbumLibraryStore: ObservableObject {
                 return unified
             }
             throw error
+        }
+    }
+
+    private nonisolated static func downloadSongs(
+        in album: Album,
+        configuration: ServerConfiguration
+    ) async throws -> [Song] {
+        try await NavidromeClient(configuration: configuration)
+            .fetchSongs(in: album.id)
+            .map { song in
+                Song(
+                    id: song.id,
+                    title: song.title,
+                    artist: song.artist,
+                    albumID: song.albumID,
+                    albumTitle: song.albumTitle,
+                    duration: song.duration,
+                    trackNumber: song.trackNumber,
+                    discNumber: song.discNumber,
+                    artworkURL: album.artworkURL ?? song.artworkURL
+                )
+            }
+    }
+
+    /// 同步完成后在后台补齐尚未缓存的专辑曲目，让详情页打开时几乎总能直接命中缓存。
+    private func prefetchMissingSongs(using configuration: ServerConfiguration) {
+        prefetchTask?.cancel()
+        let missingAlbums = albums.filter { songsByAlbumID[$0.id]?.isEmpty ?? true }
+        guard !missingAlbums.isEmpty else { return }
+
+        prefetchTask = Task { [weak self] in
+            await withTaskGroup(of: (String, [Song])?.self) { group in
+                var iterator = missingAlbums.makeIterator()
+                var pendingPersist = 0
+
+                func enqueueNext() -> Bool {
+                    guard let album = iterator.next() else { return false }
+                    group.addTask {
+                        guard !Task.isCancelled,
+                              let songs = try? await Self.downloadSongs(
+                                  in: album,
+                                  configuration: configuration
+                              )
+                        else { return nil }
+                        return (album.id, songs)
+                    }
+                    return true
+                }
+
+                for _ in 0..<Self.prefetchConcurrency {
+                    guard enqueueNext() else { break }
+                }
+
+                while let result = await group.next() {
+                    guard let self, !Task.isCancelled else {
+                        group.cancelAll()
+                        return
+                    }
+                    if let (albumID, songs) = result, !songs.isEmpty,
+                       self.songsByAlbumID[albumID]?.isEmpty ?? true {
+                        self.songsByAlbumID[albumID] = songs
+                        pendingPersist += 1
+                        if pendingPersist >= 20 {
+                            self.persistLibraryCache(for: configuration)
+                            pendingPersist = 0
+                        }
+                    }
+                    _ = enqueueNext()
+                }
+
+                if let self, pendingPersist > 0, !Task.isCancelled {
+                    self.persistLibraryCache(for: configuration)
+                }
+            }
         }
     }
 
@@ -170,6 +240,7 @@ final class AlbumLibraryStore: ObservableObject {
             songsByAlbumID = songsByAlbumID.filter { albumIDs.contains($0.key) }
             persistLibraryCache(for: configuration)
             state = .loaded
+            prefetchMissingSongs(using: configuration)
             return true
         } catch {
             if albums.isEmpty {

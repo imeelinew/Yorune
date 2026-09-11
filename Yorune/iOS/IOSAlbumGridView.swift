@@ -23,6 +23,9 @@ struct IOSOnlineLibraryView: View {
                     emptyTitle: "No Albums",
                     downloads: downloads,
                     playback: playback,
+                    cachedSongs: { album in
+                        library.cachedSongs(in: album)
+                    },
                     loadSongs: { album in
                         try await library.fetchSongs(in: album)
                     }
@@ -56,6 +59,9 @@ struct IOSDownloadedLibraryView: View {
             downloads: downloads,
             playback: playback,
             canRemoveDownloads: true,
+            cachedSongs: { album in
+                downloads.offlineSongs(in: album.id)
+            },
             loadSongs: { album in
                 downloads.offlineSongs(in: album.id)
             }
@@ -70,6 +76,7 @@ struct IOSAlbumCollectionView: View {
     @ObservedObject var downloads: DownloadStore
     @ObservedObject var playback: PlaybackController
     var canRemoveDownloads = false
+    let cachedSongs: @MainActor (Album) -> [Song]?
     let loadSongs: @MainActor (Album) async throws -> [Song]
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -119,6 +126,7 @@ struct IOSAlbumCollectionView: View {
                 album: album,
                 downloads: downloads,
                 playback: playback,
+                initialSongs: cachedSongs(album),
                 loadSongs: loadSongs,
                 isOfflineLibrary: canRemoveDownloads
             )

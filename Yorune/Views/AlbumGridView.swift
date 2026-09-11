@@ -82,6 +82,7 @@ struct AlbumGridView: View {
                 album: album,
                 downloads: downloads,
                 playback: playback,
+                initialSongs: library.cachedSongs(in: album),
                 songLoader: { album in
                     try await library.fetchSongs(in: album)
                 }
@@ -179,6 +180,7 @@ struct DownloadedAlbumGridView: View {
                 album: album,
                 downloads: downloads,
                 playback: playback,
+                initialSongs: downloads.offlineSongs(in: album.id),
                 songLoader: { album in
                     downloads.offlineSongs(in: album.id)
                 },
@@ -212,9 +214,25 @@ private struct AlbumDetailView: View {
     @ObservedObject var downloads: DownloadStore
     @ObservedObject var playback: PlaybackController
     let songLoader: @MainActor (Album) async throws -> [Song]
-    var isOfflineLibrary = false
+    let isOfflineLibrary: Bool
 
-    @State private var state: LoadState = .loading
+    @State private var state: LoadState
+
+    init(
+        album: Album,
+        downloads: DownloadStore,
+        playback: PlaybackController,
+        initialSongs: [Song]?,
+        songLoader: @escaping @MainActor (Album) async throws -> [Song],
+        isOfflineLibrary: Bool = false
+    ) {
+        self.album = album
+        self.downloads = downloads
+        self.playback = playback
+        self.songLoader = songLoader
+        self.isOfflineLibrary = isOfflineLibrary
+        _state = State(initialValue: initialSongs.map(LoadState.loaded) ?? .loading)
+    }
 
     var body: some View {
         trackContent
@@ -512,13 +530,18 @@ private struct AlbumDetailView: View {
     }
 
     private func loadSongs() async {
-        state = .loading
+        if case .loaded = state {
+            // 已有内容时静默刷新，不再退回加载态。
+        } else {
+            state = .loading
+        }
 
         do {
             let songs = try await songLoader(album)
             downloads.remember(songs)
             state = .loaded(songs)
         } catch {
+            if case .loaded = state { return }
             state = .failed
         }
     }
