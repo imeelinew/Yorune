@@ -153,21 +153,32 @@ struct IOSNowPlayingView: View {
     }
 
     private var progress: some View {
-        VStack(spacing: 6) {
+        let songID = playback.currentSong?.id
+
+        return VStack(spacing: 6) {
             IOSProgressSlider(
                 fraction: playback.duration > 0 ? displayedElapsedTime / playback.duration : 0,
                 isEnabled: playback.duration > 0,
                 onScrub: { fraction in
+                    guard playback.currentSong?.id == songID else { return }
                     pendingSeekTime = fraction * playback.duration
                     isSeeking = true
                 },
                 onCommit: { fraction in
+                    guard playback.currentSong?.id == songID else { return }
                     let target = fraction * playback.duration
                     pendingSeekTime = target
                     playback.seek(to: target)
                     isSeeking = false
+                },
+                onCancel: {
+                    isSeeking = false
                 }
             )
+            .id(songID)
+            .onChange(of: songID) { _, _ in
+                isSeeking = false
+            }
 
             HStack {
                 Text(formatPlaybackTime(displayedElapsedTime))
@@ -344,7 +355,10 @@ private struct IOSProgressSlider: View {
     let isEnabled: Bool
     let onScrub: (Double) -> Void
     let onCommit: (Double) -> Void
+    let onCancel: () -> Void
 
+    @GestureState private var isTouching = false
+    @State private var initialFraction: Double?
     @State private var isDragging = false
 
     var body: some View {
@@ -367,23 +381,44 @@ private struct IOSProgressSlider: View {
             .animation(.easeOut(duration: 0.15), value: isDragging)
             .gesture(
                 DragGesture(minimumDistance: 0)
+                    .updating($isTouching) { _, touching, _ in
+                        touching = true
+                    }
                     .onChanged { value in
                         guard isEnabled, width > 0 else { return }
+                        if initialFraction == nil {
+                            initialFraction = min(max(fraction, 0), 1)
+                        }
+                        // Ignore tap jitter, but keep the touch-down position as the origin.
+                        guard isDragging || abs(value.translation.width) >= 3 else { return }
                         isDragging = true
-                        onScrub(progressFraction(x: value.location.x, width: width))
+                        onScrub(progressFraction(translation: value.translation.width, width: width))
                     }
                     .onEnded { value in
-                        defer { isDragging = false }
-                        guard isEnabled, width > 0 else { return }
-                        onCommit(progressFraction(x: value.location.x, width: width))
+                        defer { resetScrub() }
+                        guard isEnabled, width > 0, isDragging else { return }
+                        onCommit(progressFraction(translation: value.translation.width, width: width))
                     }
             )
         }
         .frame(height: 24)
+        .onChange(of: isTouching) { _, touching in
+            // GestureState also resets when the system cancels without onEnded.
+            if !touching {
+                resetScrub()
+            }
+        }
+        .onDisappear(perform: resetScrub)
     }
 
-    private func progressFraction(x: CGFloat, width: CGFloat) -> Double {
-        Double(min(max(x, 0), width) / width)
+    private func progressFraction(translation: CGFloat, width: CGFloat) -> Double {
+        min(max((initialFraction ?? fraction) + Double(translation / width), 0), 1)
+    }
+
+    private func resetScrub() {
+        initialFraction = nil
+        isDragging = false
+        onCancel()
     }
 }
 

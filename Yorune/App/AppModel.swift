@@ -206,6 +206,11 @@ final class PlaybackController: ObservableObject {
         currentSong != nil
     }
 
+    var canGoPreviousTrack: Bool {
+        guard let currentIndex else { return false }
+        return currentIndex > queue.startIndex || (repeatMode == .all && queue.count > 1)
+    }
+
     var canGoNext: Bool {
         guard let currentIndex else { return false }
         return queue.indices.contains(currentIndex + 1) || (repeatMode == .all && queue.count > 1)
@@ -323,8 +328,18 @@ final class PlaybackController: ObservableObject {
     }
 
     func playPrevious() {
+        playPrevious(restartCurrent: true)
+    }
+
+    /// Swiping changes tracks even when the current song has played for over three seconds.
+    func playPreviousTrack() {
+        guard canGoPreviousTrack else { return }
+        playPrevious(restartCurrent: false)
+    }
+
+    private func playPrevious(restartCurrent: Bool) {
         guard let currentIndex else { return }
-        if elapsedTime > 3 {
+        if restartCurrent, elapsedTime > 3 {
             player?.seek(to: .zero)
             elapsedTime = 0
             pendingSeekOnReady = 0

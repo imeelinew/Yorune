@@ -145,6 +145,9 @@ struct PlayerBar: View {
         }
         .padding(.horizontal, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+#if os(iOS)
+        .modifier(IOSPlayerSwipeModifier(playback: playback))
+#endif
     }
 
     @ViewBuilder
@@ -155,6 +158,9 @@ struct PlayerBar: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Now Playing")
+#if os(iOS)
+            .modifier(IOSPlayerSwipeModifier(playback: playback))
+#endif
         } else {
             songInfoContent(isCompact: isCompact)
         }
@@ -340,6 +346,64 @@ struct PlayerBar: View {
         #endif
     }
 }
+
+#if os(iOS)
+/// Keep horizontal track navigation separate from taps on the player buttons.
+private struct IOSPlayerSwipeModifier: ViewModifier {
+    @ObservedObject var playback: PlaybackController
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @GestureState(resetTransaction: Transaction(animation: .spring(response: 0.35, dampingFraction: 0.85)))
+    private var dragOffset: CGFloat = 0
+    @State private var movesForward = true
+
+    func body(content: Content) -> some View {
+        GeometryReader { geometry in
+            ZStack {
+                content
+                    .id(playback.currentSong?.id)
+                    .transition(reduceMotion ? .opacity : .asymmetric(
+                        insertion: .move(edge: movesForward ? .trailing : .leading).combined(with: .opacity),
+                        removal: .move(edge: movesForward ? .leading : .trailing).combined(with: .opacity)
+                    ))
+            }
+            .offset(x: reduceMotion ? 0 : dragOffset)
+            .frame(width: geometry.size.width, height: geometry.size.height)
+            .contentShape(Rectangle())
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 12)
+                    .updating($dragOffset) { value, offset, transaction in
+                        guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                        transaction.animation = nil
+                        let canNavigate = value.translation.width < 0
+                            ? playback.canGoNext : playback.canGoPreviousTrack
+                        offset = value.translation.width * (canNavigate ? 1 : 0.2)
+                    }
+                    .onChanged { value in
+                        guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                        movesForward = value.translation.width < 0
+                    }
+                    .onEnded { value in
+                        let distance = value.translation.width
+                        guard abs(distance) > abs(value.translation.height) else { return }
+                        let threshold = min(72, geometry.size.width * 0.22)
+                        let projected = value.predictedEndTranslation.width
+                        guard abs(distance) >= threshold
+                            || (abs(distance) >= 20 && abs(projected) >= threshold && distance * projected > 0)
+                        else { return }
+                        withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.35, dampingFraction: 0.85)) {
+                            if distance < 0, playback.canGoNext {
+                                playback.playNext()
+                            } else if distance > 0, playback.canGoPreviousTrack {
+                                playback.playPreviousTrack()
+                            }
+                        }
+                    }
+            )
+        }
+        .clipped()
+    }
+}
+#endif
 
 private struct PlayerProgressLane: View {
     let elapsedTime: Double
