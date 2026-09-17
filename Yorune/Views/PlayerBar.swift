@@ -431,7 +431,7 @@ private struct IOSPlayerSwipeModifier: ViewModifier {
     }
 
     private func canNavigate(translation: CGFloat) -> Bool {
-        translation < 0 ? playback.canGoPreviousTrack : playback.canGoNext
+        translation < 0 ? playback.canGoNextTrack : playback.canGoPreviousTrack
     }
 
     private func rubberBanded(_ translation: CGFloat) -> CGFloat {
@@ -456,9 +456,9 @@ private struct IOSPlayerSwipeModifier: ViewModifier {
         let startingSongID = playback.currentSong?.id
         if reduceMotion {
             if direction < 0 {
-                playback.playPreviousTrack()
+                playback.playNextTrack()
             } else {
-                playback.playNext()
+                playback.playPreviousTrack()
             }
             dragOffset = 0
             return
@@ -479,9 +479,9 @@ private struct IOSPlayerSwipeModifier: ViewModifier {
                 return
             }
             if direction < 0 {
-                playback.playPreviousTrack()
+                playback.playNextTrack()
             } else {
-                playback.playNext()
+                playback.playPreviousTrack()
             }
 
             var transaction = Transaction()
