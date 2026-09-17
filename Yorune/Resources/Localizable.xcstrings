@@ -186,7 +186,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%lld"
+            "value" : "%@"
           }
         }
       }
