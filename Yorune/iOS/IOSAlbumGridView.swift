@@ -15,7 +15,9 @@ struct IOSOnlineLibraryView: View {
                 } actions: {
                     Button("Open Settings", action: openSettings)
                 }
-            case .initializing, .loading:
+            case .initializing:
+                Color.clear
+            case .loading:
                 ProgressView("Loading")
             case .loaded:
                 IOSAlbumCollectionView(

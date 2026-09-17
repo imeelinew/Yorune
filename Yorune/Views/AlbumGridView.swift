@@ -67,22 +67,13 @@ struct AlbumGridView: View {
             }
             .overlay(alignment: .top) {
                 if library.isSyncing || refreshRequested || pullDistance > 0 {
-                    HStack(spacing: 8) {
-                        if library.isSyncing || refreshRequested {
-                            ProgressView().controlSize(.small)
-                            Text("Syncing Library")
-                        } else {
-                            Image(systemName: pullDistance >= 80 ? "arrow.up" : "arrow.down")
-                            Text(pullDistance >= 80 ? "Release to Refresh" : "Pull to Refresh")
-                        }
-                    }
-                    .font(.caption)
-                    .padding(8)
-                    .background(.regularMaterial, in: Capsule())
-                    .padding(.top, 8)
-                    .allowsHitTesting(false)
+                    refreshIndicator
                 }
             }
+            .animation(
+                .easeInOut(duration: 0.18),
+                value: library.isSyncing || refreshRequested || pullDistance > 0
+            )
         }
         .navigationTitle("Albums")
         .accessibilityAction(named: Text("Sync Library")) {
@@ -101,6 +92,40 @@ struct AlbumGridView: View {
         Task {
             await library.reload()
             refreshRequested = false
+        }
+    }
+
+    @ViewBuilder
+    private var refreshIndicator: some View {
+        let indicator = HStack(spacing: 8) {
+            if library.isSyncing || refreshRequested {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Syncing Library")
+            } else {
+                Image(systemName: pullDistance >= 80 ? "arrow.up" : "arrow.down")
+                Text(pullDistance >= 80 ? "Release to Refresh" : "Pull to Refresh")
+            }
+        }
+        .font(.system(size: 13, weight: .regular))
+        .foregroundStyle(.primary)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 11)
+
+        if #available(macOS 26.0, *) {
+            indicator
+                .glassEffect(.regular, in: Capsule())
+                .shadow(color: .black.opacity(0.16), radius: 18, y: 8)
+                .padding(.top, 12)
+                .transition(.blurReplace)
+                .allowsHitTesting(false)
+        } else {
+            indicator
+                .background(.ultraThinMaterial, in: Capsule())
+                .shadow(color: .black.opacity(0.16), radius: 18, y: 8)
+                .padding(.top, 12)
+                .transition(.opacity)
+                .allowsHitTesting(false)
         }
     }
 

@@ -9,7 +9,7 @@ struct SidebarView: View {
     @Binding var selection: LibrarySection?
 
     var body: some View {
-        List(selection: $selection) {
+        List {
             sidebarRow(
                 .albums,
                 title: "Albums",
@@ -35,20 +35,32 @@ struct SidebarView: View {
         title: LocalizedStringKey,
         systemImage: String
     ) -> some View {
-        // Match Obelisk's professional sidebar: 3 pt leading inset,
-        // 18 pt icon slot, 8 pt title gap, and a 30 pt row.
-        HStack(spacing: 8) {
-            Image(systemName: systemImage)
-                .font(.system(size: 15))
-                .foregroundStyle(YoruneStyle.accent)
-                .frame(width: 18, height: 18)
-            Text(title)
-                .lineLimit(1)
-                .foregroundStyle(.primary)
+        Button {
+            selection = section
+        } label: {
+            // Match Obelisk's professional sidebar geometry without opting
+            // into the system source-list selection tint.
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 15))
+                    .foregroundStyle(YoruneStyle.accent)
+                    .frame(width: 18, height: 18)
+                Text(title)
+                    .lineLimit(1)
+                    .foregroundStyle(.primary)
+            }
+            .padding(.horizontal, 6)
+            .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
+            .background {
+                if selection == section {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color.secondary.opacity(0.22))
+                }
+            }
+            .contentShape(Rectangle())
         }
-        .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
-        .contentShape(Rectangle())
+        .buttonStyle(.plain)
         .listRowInsets(EdgeInsets(top: 1, leading: 3, bottom: 1, trailing: 3))
-        .tag(section)
+        .accessibilityAddTraits(selection == section ? .isSelected : [])
     }
 }

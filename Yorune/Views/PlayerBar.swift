@@ -352,55 +352,151 @@ struct PlayerBar: View {
 private struct IOSPlayerSwipeModifier: ViewModifier {
     @ObservedObject var playback: PlaybackController
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @GestureState(resetTransaction: Transaction(animation: .spring(response: 0.35, dampingFraction: 0.85)))
-    private var dragOffset: CGFloat = 0
-    @State private var movesForward = true
+    @GestureState private var isTouching = false
+    @State private var dragOffset: CGFloat = 0
+    @State private var isHorizontalGesture = false
+    @State private var isSwitching = false
+    @State private var boundaryFeedback = 0
+    @State private var switchTask: Task<Void, Never>?
 
     func body(content: Content) -> some View {
         GeometryReader { geometry in
-            ZStack {
-                content
-                    .id(playback.currentSong?.id)
-                    .transition(reduceMotion ? .opacity : .asymmetric(
-                        insertion: .move(edge: movesForward ? .trailing : .leading).combined(with: .opacity),
-                        removal: .move(edge: movesForward ? .leading : .trailing).combined(with: .opacity)
-                    ))
-            }
-            .offset(x: reduceMotion ? 0 : dragOffset)
-            .frame(width: geometry.size.width, height: geometry.size.height)
-            .contentShape(Rectangle())
-            .highPriorityGesture(
-                DragGesture(minimumDistance: 12)
-                    .updating($dragOffset) { value, offset, transaction in
-                        guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                        transaction.animation = nil
-                        let canNavigate = value.translation.width < 0
-                            ? playback.canGoNext : playback.canGoPreviousTrack
-                        offset = value.translation.width * (canNavigate ? 1 : 0.2)
-                    }
-                    .onChanged { value in
-                        guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                        movesForward = value.translation.width < 0
-                    }
-                    .onEnded { value in
-                        let distance = value.translation.width
-                        guard abs(distance) > abs(value.translation.height) else { return }
-                        let threshold = min(72, geometry.size.width * 0.22)
-                        let projected = value.predictedEndTranslation.width
-                        guard abs(distance) >= threshold
-                            || (abs(distance) >= 20 && abs(projected) >= threshold && distance * projected > 0)
-                        else { return }
-                        withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.35, dampingFraction: 0.85)) {
-                            if distance < 0, playback.canGoNext {
-                                playback.playNext()
-                            } else if distance > 0, playback.canGoPreviousTrack {
-                                playback.playPreviousTrack()
+            content
+                .compositingGroup()
+                .offset(x: reduceMotion ? 0 : dragOffset)
+                .frame(width: geometry.size.width, height: geometry.size.height)
+                .contentShape(Rectangle())
+                .highPriorityGesture(
+                    DragGesture(minimumDistance: 8)
+                        .updating($isTouching) { _, touching, _ in
+                            touching = true
+                        }
+                        .onChanged { value in
+                            guard !isSwitching else { return }
+                            let horizontal = abs(value.translation.width) > abs(value.translation.height)
+                            guard isHorizontalGesture || horizontal else { return }
+                            isHorizontalGesture = true
+                            let canNavigate = canNavigate(translation: value.translation.width)
+                            var transaction = Transaction()
+                            transaction.disablesAnimations = true
+                            withTransaction(transaction) {
+                                dragOffset = canNavigate
+                                    ? value.translation.width
+                                    : rubberBanded(value.translation.width)
                             }
                         }
-                    }
-            )
+                        .onEnded { value in
+                            defer { isHorizontalGesture = false }
+                            let distance = value.translation.width
+                            guard isHorizontalGesture,
+                                  abs(distance) > abs(value.translation.height) else {
+                                returnToCenter(isBoundary: false)
+                                return
+                            }
+                            let threshold = min(72, geometry.size.width * 0.22)
+                            let projected = value.predictedEndTranslation.width
+                            let crossedThreshold = abs(distance) >= threshold
+                                || (abs(distance) >= 20 && abs(projected) >= threshold
+                                    && distance * projected > 0)
+                            guard crossedThreshold else {
+                                returnToCenter(isBoundary: false)
+                                return
+                            }
+                            guard canNavigate(translation: distance) else {
+                                boundaryFeedback += 1
+                                returnToCenter(isBoundary: true)
+                                return
+                            }
+                            switchTrack(
+                                direction: distance < 0 ? -1 : 1,
+                                width: geometry.size.width
+                            )
+                        }
+                )
         }
         .clipped()
+        .sensoryFeedback(.warning, trigger: boundaryFeedback)
+        .onChange(of: isTouching) { _, touching in
+            guard !touching, isHorizontalGesture, !isSwitching else { return }
+            isHorizontalGesture = false
+            returnToCenter(isBoundary: false)
+        }
+        .onDisappear {
+            switchTask?.cancel()
+            switchTask = nil
+            isSwitching = false
+            isHorizontalGesture = false
+            dragOffset = 0
+        }
+    }
+
+    private func canNavigate(translation: CGFloat) -> Bool {
+        translation < 0 ? playback.canGoPreviousTrack : playback.canGoNext
+    }
+
+    private func rubberBanded(_ translation: CGFloat) -> CGFloat {
+        let magnitude = min(42, abs(translation) * 0.18)
+        return translation < 0 ? -magnitude : magnitude
+    }
+
+    private func returnToCenter(isBoundary: Bool) {
+        let animation = reduceMotion
+            ? Animation.easeOut(duration: 0.16)
+            : Animation.spring(
+                response: isBoundary ? 0.36 : 0.28,
+                dampingFraction: isBoundary ? 0.48 : 0.82
+            )
+        withAnimation(animation) {
+            dragOffset = 0
+        }
+    }
+
+    private func switchTrack(direction: CGFloat, width: CGFloat) {
+        guard !isSwitching else { return }
+        let startingSongID = playback.currentSong?.id
+        if reduceMotion {
+            if direction < 0 {
+                playback.playPreviousTrack()
+            } else {
+                playback.playNext()
+            }
+            dragOffset = 0
+            return
+        }
+
+        isSwitching = true
+        switchTask?.cancel()
+        withAnimation(.easeOut(duration: 0.12)) {
+            dragOffset = direction * max(width, 1)
+        }
+
+        switchTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(110))
+            guard !Task.isCancelled else { return }
+            guard playback.currentSong?.id == startingSongID else {
+                returnToCenter(isBoundary: false)
+                isSwitching = false
+                return
+            }
+            if direction < 0 {
+                playback.playPreviousTrack()
+            } else {
+                playback.playNext()
+            }
+
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                dragOffset = -direction * max(width, 1)
+            }
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                dragOffset = 0
+            }
+
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            isSwitching = false
+        }
     }
 }
 #endif

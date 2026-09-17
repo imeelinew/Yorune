@@ -4,8 +4,6 @@ import SwiftUI
 struct IOSNowPlayingView: View {
     @ObservedObject var playback: PlaybackController
 
-    @State private var isSeeking = false
-    @State private var pendingSeekTime = 0.0
     @State private var isQueueVisible = false
 
     var body: some View {
@@ -153,46 +151,11 @@ struct IOSNowPlayingView: View {
     }
 
     private var progress: some View {
-        let songID = playback.currentSong?.id
-
-        return VStack(spacing: 6) {
-            IOSProgressSlider(
-                fraction: playback.duration > 0 ? displayedElapsedTime / playback.duration : 0,
-                isEnabled: playback.duration > 0,
-                onScrub: { fraction in
-                    guard playback.currentSong?.id == songID else { return }
-                    pendingSeekTime = fraction * playback.duration
-                    isSeeking = true
-                },
-                onCommit: { fraction in
-                    guard playback.currentSong?.id == songID else { return }
-                    let target = fraction * playback.duration
-                    pendingSeekTime = target
-                    playback.seek(to: target)
-                    isSeeking = false
-                },
-                onCancel: {
-                    isSeeking = false
-                }
-            )
-            .id(songID)
-            .onChange(of: songID) { _, _ in
-                isSeeking = false
-            }
-
-            HStack {
-                Text(formatPlaybackTime(displayedElapsedTime))
-                Spacer()
-                Text("-\(formatPlaybackTime(max(0, playback.duration - displayedElapsedTime)))")
-            }
-            .font(.caption2.weight(.medium))
-            .monospacedDigit()
-            .foregroundStyle(.white.opacity(0.55))
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text("Playback Position"))
-        .accessibilityValue(
-            Text("\(formatPlaybackTime(displayedElapsedTime)) / \(formatPlaybackTime(playback.duration))")
+        IOSPlaybackProgress(
+            songID: playback.currentSong?.id,
+            elapsedTime: playback.elapsedTime,
+            duration: playback.duration,
+            seek: playback.seek
         )
     }
 
@@ -289,11 +252,6 @@ struct IOSNowPlayingView: View {
         .padding(.horizontal, 20)
     }
 
-    // MARK: - Helpers
-
-    private var displayedElapsedTime: Double {
-        isSeeking ? pendingSeekTime : playback.elapsedTime
-    }
 }
 
 private struct IOSNowPlayingQueueRow: View {
@@ -350,22 +308,74 @@ private struct IOSNowPlayingBackground: View {
     }
 }
 
-private struct IOSProgressSlider: View {
-    let fraction: Double
-    let isEnabled: Bool
-    let onScrub: (Double) -> Void
-    let onCommit: (Double) -> Void
-    let onCancel: () -> Void
+/// Keeps 120 Hz drag updates local so the artwork and blurred background are
+/// not recomputed for every finger movement.
+private struct IOSPlaybackProgress: View {
+    let songID: String?
+    let elapsedTime: Double
+    let duration: Double
+    let seek: (Double) -> Void
 
     @GestureState private var isTouching = false
     @State private var initialFraction: Double?
+    @State private var previewFraction: Double?
+    @State private var committedTarget: Double?
     @State private var isDragging = false
 
+    private var liveFraction: Double {
+        guard duration > 0 else { return 0 }
+        return min(max(elapsedTime / duration, 0), 1)
+    }
+
+    private var displayedFraction: Double {
+        previewFraction ?? liveFraction
+    }
+
+    private var displayedElapsedTime: Double {
+        displayedFraction * duration
+    }
+
     var body: some View {
+        VStack(spacing: 6) {
+            slider
+
+            HStack {
+                Text(formatPlaybackTime(displayedElapsedTime))
+                Spacer()
+                Text("-\(formatPlaybackTime(max(0, duration - displayedElapsedTime)))")
+            }
+            .font(.caption2.weight(.medium))
+            .monospacedDigit()
+            .foregroundStyle(.white.opacity(0.55))
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text("Playback Position"))
+        .accessibilityValue(
+            Text("\(formatPlaybackTime(displayedElapsedTime)) / \(formatPlaybackTime(duration))")
+        )
+        .onChange(of: songID) { _, _ in
+            resetInteraction(clearPreview: true)
+        }
+        .onChange(of: elapsedTime) { _, newTime in
+            guard let committedTarget, abs(newTime - committedTarget) < 1 else { return }
+            clearCommittedPreview()
+        }
+        .onChange(of: isTouching) { _, touching in
+            // GestureState resets when the system cancels without onEnded.
+            if !touching, initialFraction != nil || isDragging {
+                resetInteraction(clearPreview: true)
+            }
+        }
+        .onDisappear {
+            resetInteraction(clearPreview: true)
+        }
+    }
+
+    private var slider: some View {
         GeometryReader { geometry in
             let width = geometry.size.width
             let height: CGFloat = isDragging ? 12 : 7
-            let clamped = CGFloat(min(max(fraction, 0), 1))
+            let clamped = CGFloat(displayedFraction)
 
             ZStack(alignment: .leading) {
                 Capsule()
@@ -385,40 +395,59 @@ private struct IOSProgressSlider: View {
                         touching = true
                     }
                     .onChanged { value in
-                        guard isEnabled, width > 0 else { return }
+                        guard duration > 0, width > 0 else { return }
                         if initialFraction == nil {
-                            initialFraction = min(max(fraction, 0), 1)
+                            initialFraction = liveFraction
                         }
-                        // Ignore tap jitter, but keep the touch-down position as the origin.
+                        // Ignore tap jitter, but keep touch-down as the origin.
                         guard isDragging || abs(value.translation.width) >= 3 else { return }
                         isDragging = true
-                        onScrub(progressFraction(translation: value.translation.width, width: width))
+                        previewFraction = progressFraction(
+                            translation: value.translation.width,
+                            width: width
+                        )
                     }
                     .onEnded { value in
-                        defer { resetScrub() }
-                        guard isEnabled, width > 0, isDragging else { return }
-                        onCommit(progressFraction(translation: value.translation.width, width: width))
+                        guard duration > 0, width > 0, isDragging else {
+                            resetInteraction(clearPreview: true)
+                            return
+                        }
+                        let fraction = progressFraction(
+                            translation: value.translation.width,
+                            width: width
+                        )
+                        let target = fraction * duration
+                        previewFraction = fraction
+                        committedTarget = target
+                        initialFraction = nil
+                        isDragging = false
+                        seek(target)
                     }
             )
         }
         .frame(height: 24)
-        .onChange(of: isTouching) { _, touching in
-            // GestureState also resets when the system cancels without onEnded.
-            if !touching {
-                resetScrub()
-            }
-        }
-        .onDisappear(perform: resetScrub)
     }
 
     private func progressFraction(translation: CGFloat, width: CGFloat) -> Double {
-        min(max((initialFraction ?? fraction) + Double(translation / width), 0), 1)
+        min(max((initialFraction ?? liveFraction) + Double(translation / width), 0), 1)
     }
 
-    private func resetScrub() {
+    private func clearCommittedPreview() {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            previewFraction = nil
+            committedTarget = nil
+        }
+    }
+
+    private func resetInteraction(clearPreview: Bool) {
         initialFraction = nil
         isDragging = false
-        onCancel()
+        if clearPreview {
+            previewFraction = nil
+            committedTarget = nil
+        }
     }
 }
 

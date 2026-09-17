@@ -171,6 +171,8 @@ final class PlaybackController: ObservableObject {
     private var retryAttempt = 0
     private var isRetryScheduled = false
     private var pendingSeekOnReady = 0.0
+    private var seekRequestID = 0
+    private var pendingObservedSeek: (target: Double, requestID: Int)?
     private var playbackIntent = false
     private let isMutedForUITesting = ProcessInfo.processInfo.environment["YORUNE_UI_TEST_MUTED"] == "1"
 
@@ -303,6 +305,7 @@ final class PlaybackController: ObservableObject {
         activateAudioSession()
 #endif
         if duration > 0, elapsedTime >= duration {
+            invalidatePendingObservedSeek()
             player?.seek(to: .zero)
             elapsedTime = 0
             pendingSeekOnReady = 0
@@ -340,6 +343,7 @@ final class PlaybackController: ObservableObject {
     private func playPrevious(restartCurrent: Bool) {
         guard let currentIndex else { return }
         if restartCurrent, elapsedTime > 3 {
+            invalidatePendingObservedSeek()
             player?.seek(to: .zero)
             elapsedTime = 0
             pendingSeekOnReady = 0
@@ -350,6 +354,7 @@ final class PlaybackController: ObservableObject {
 
         if currentIndex == queue.startIndex {
             guard repeatMode == .all, queue.count > 1 else {
+                invalidatePendingObservedSeek()
                 player?.seek(to: .zero)
                 elapsedTime = 0
                 pendingSeekOnReady = 0
@@ -409,17 +414,33 @@ final class PlaybackController: ObservableObject {
     func seek(to time: Double) {
         let target = min(max(time, 0), duration)
         if let player {
+            seekRequestID &+= 1
+            let requestID = seekRequestID
+            pendingObservedSeek = (target, requestID)
             player.seek(
                 to: CMTime(seconds: target, preferredTimescale: 600),
                 toleranceBefore: .zero,
                 toleranceAfter: .zero
-            )
+            ) { [weak self] finished in
+                guard finished else { return }
+                Task { @MainActor [weak self] in
+                    guard let self,
+                          self.pendingObservedSeek?.requestID == requestID else { return }
+                    self.pendingObservedSeek = nil
+                    self.elapsedTime = target
+                }
+            }
         } else {
             pendingSeekOnReady = target
         }
         elapsedTime = target
         updateNowPlayingInfo()
         persistPlaybackState()
+    }
+
+    private func invalidatePendingObservedSeek() {
+        seekRequestID &+= 1
+        pendingObservedSeek = nil
     }
 
     func setVolume(_ value: Double) {
@@ -547,6 +568,7 @@ final class PlaybackController: ObservableObject {
 
         player?.pause()
         player?.replaceCurrentItem(with: nil)
+        invalidatePendingObservedSeek()
 #if os(iOS)
         try? AVAudioSession.sharedInstance().setActive(
             false,
@@ -592,6 +614,7 @@ final class PlaybackController: ObservableObject {
         retryTask?.cancel()
         retryTask = nil
         isRetryScheduled = false
+        invalidatePendingObservedSeek()
         guard let currentIndex, queue.indices.contains(currentIndex) else {
             playbackLogger.error("Playback queue position is invalid")
             return
@@ -695,6 +718,7 @@ final class PlaybackController: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 if repeatMode == .one {
+                    invalidatePendingObservedSeek()
                     player?.seek(to: .zero)
                     elapsedTime = 0
                     player?.play()
@@ -745,7 +769,15 @@ final class PlaybackController: ObservableObject {
                 guard let self else { return }
                 let seconds = time.seconds
                 if seconds.isFinite {
-                    elapsedTime = max(seconds, 0)
+                    if let pendingObservedSeek {
+                        let reachedTarget = abs(seconds - pendingObservedSeek.target) < 1
+                        if reachedTarget {
+                            self.pendingObservedSeek = nil
+                            elapsedTime = max(seconds, 0)
+                        }
+                    } else {
+                        elapsedTime = max(seconds, 0)
+                    }
                 }
 
                 if let itemDuration = player.currentItem?.duration.seconds,
