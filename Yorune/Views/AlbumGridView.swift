@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct AlbumGridView: View {
@@ -7,49 +8,99 @@ struct AlbumGridView: View {
     let openSettings: () -> Void
 
     @State private var searchText = ""
+    @State private var isAtTop = true
+    @State private var pullDistance: CGFloat = 0
+    @State private var refreshRequested = false
 
     private let columns = [
         GridItem(.adaptive(minimum: 140, maximum: 220), spacing: 20, alignment: .top)
     ]
 
     var body: some View {
-        Group {
-            switch library.state {
-            case .needsConfiguration:
-                VStack(spacing: 16) {
-                    Text("Connect a server in Settings")
-                        .font(.title3)
-                    Button("Open Settings", action: openSettings)
-                }
-            case .loading:
-                ProgressView("Loading")
-            case .loaded:
-                if library.albums.isEmpty {
-                    Text("No Albums")
-                        .font(.title3)
-                } else {
-                    albumCollection
-                }
-            case .failed:
-                VStack(spacing: 16) {
-                    Text("Unable to Load Albums")
-                        .font(.title3)
-                    Button("Retry") {
-                        Task {
-                            await library.reload()
+        GeometryReader { viewport in
+            ScrollView {
+                Group {
+                    switch library.state {
+                    case .needsConfiguration:
+                        VStack(spacing: 16) {
+                            Text("Connect a server in Settings").font(.title3)
+                            Button("Open Settings", action: openSettings)
+                        }
+                    case .initializing, .loading:
+                        ProgressView("Loading")
+                    case .loaded:
+                        if library.albums.isEmpty {
+                            Text("No Albums").font(.title3)
+                        } else {
+                            albumCollection
+                        }
+                    case .failed:
+                        VStack(spacing: 16) {
+                            Text("Unable to Load Albums").font(.title3)
+                            Button("Retry", action: refresh).disabled(!canRefresh)
+                            Button("Open Settings", action: openSettings)
                         }
                     }
-                    Button("Open Settings", action: openSettings)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(
+                    minHeight: viewport.size.height,
+                    alignment: library.state == .loaded && !filteredAlbums.isEmpty ? .top : .center
+                )
+            }
+            .scrollBounceBehavior(.always, axes: .vertical)
+            .onChange(of: canRefresh) { _, enabled in
+                if !enabled { pullDistance = 0 }
+            }
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                geometry.contentOffset.y <= -geometry.contentInsets.top + 1
+            } action: { _, atTop in
+                isAtTop = atTop
+            }
+            .background {
+                TrackpadPullObserver(
+                    isEnabled: canRefresh,
+                    isAtTop: isAtTop,
+                    distance: $pullDistance,
+                    refresh: refresh
+                )
+            }
+            .overlay(alignment: .top) {
+                if library.isSyncing || refreshRequested || pullDistance > 0 {
+                    HStack(spacing: 8) {
+                        if library.isSyncing || refreshRequested {
+                            ProgressView().controlSize(.small)
+                            Text("Syncing Library")
+                        } else {
+                            Image(systemName: pullDistance >= 80 ? "arrow.up" : "arrow.down")
+                            Text(pullDistance >= 80 ? "Release to Refresh" : "Pull to Refresh")
+                        }
+                    }
+                    .font(.caption)
+                    .padding(8)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.top, 8)
+                    .allowsHitTesting(false)
                 }
             }
         }
         .navigationTitle("Albums")
-        .toolbar {
-            if library.state != .needsConfiguration {
-                ToolbarItem(placement: .primaryAction) {
-                    LibrarySyncButton(library: library)
-                }
-            }
+        .accessibilityAction(named: Text("Sync Library")) {
+            refresh()
+        }
+    }
+
+    private var canRefresh: Bool {
+        library.state != .needsConfiguration && library.state != .initializing
+            && library.state != .loading && !library.isSyncing && !refreshRequested
+    }
+
+    private func refresh() {
+        guard canRefresh else { return }
+        refreshRequested = true
+        Task {
+            await library.reload()
+            refreshRequested = false
         }
     }
 
@@ -59,17 +110,15 @@ struct AlbumGridView: View {
                 Text("No Results")
                     .font(.title3)
             } else {
-                ScrollView {
-                    LazyVGrid(columns: columns, alignment: .leading, spacing: 24) {
-                        ForEach(sortedAlbums) { album in
-                            NavigationLink(value: album) {
-                                AlbumCardView(album: album)
-                            }
-                            .buttonStyle(.plain)
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 24) {
+                    ForEach(sortedAlbums) { album in
+                        NavigationLink(value: album) {
+                            AlbumCardView(album: album)
                         }
+                        .buttonStyle(.plain)
                     }
-                    .padding(24)
                 }
+                .padding(24)
             }
         }
         .searchable(
@@ -104,31 +153,84 @@ struct AlbumGridView: View {
     }
 }
 
-private struct LibrarySyncButton: View {
-    @ObservedObject var library: AlbumLibraryStore
+/// macOS ScrollView does not provide the iOS refresh-control gesture.
+/// Observe (never consume) precise scroll events, excluding inertial scrolling.
+private struct TrackpadPullObserver: NSViewRepresentable {
+    var isEnabled: Bool
+    var isAtTop: Bool
+    @Binding var distance: CGFloat
+    var refresh: () -> Void
 
-    private var isWorking: Bool {
-        library.isSyncing || library.state == .loading
+    func makeNSView(context: Context) -> ObserverView { ObserverView() }
+
+    func updateNSView(_ view: ObserverView, context: Context) {
+        view.configuration = self
+        if !isEnabled { view.resetGesture() }
     }
 
-    var body: some View {
-        Button {
-            Task {
-                await library.reload()
+    static func dismantleNSView(_ view: ObserverView, coordinator: ()) {
+        view.stopObserving()
+    }
+
+    final class ObserverView: NSView {
+        var configuration: TrackpadPullObserver?
+        var pull: CGFloat = 0
+        private var tracking = false
+        private var monitor: Any?
+
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            stopObserving()
+            guard window != nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+                self?.observe(event)
+                return event
             }
-        } label: {
-            ZStack {
-                Image(systemName: "arrow.trianglehead.clockwise")
-                    .opacity(isWorking ? 0 : 1)
-                ProgressView()
-                    .controlSize(.small)
-                    .opacity(isWorking ? 1 : 0)
-            }
-            .frame(width: 16, height: 16)
         }
-        .accessibilityLabel("Sync Library")
-        .disabled(isWorking)
-        .help("Sync Library")
+
+        func stopObserving() {
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+            resetGesture()
+        }
+
+        func resetGesture() {
+            tracking = false
+            pull = 0
+        }
+
+        private func observe(_ event: NSEvent) {
+            guard let configuration else { return }
+            guard configuration.isEnabled, event.window === window,
+                  !isHiddenOrHasHiddenAncestor, event.hasPreciseScrollingDeltas,
+                  event.momentumPhase.isEmpty else { return }
+
+            if event.phase.contains(.began) {
+                tracking = visibleRect.contains(convert(event.locationInWindow, from: nil))
+                pull = 0
+            }
+            guard tracking else { return }
+            if event.phase.contains(.cancelled) {
+                tracking = false
+                pull = 0
+            } else if event.phase.contains(.ended) {
+                let shouldRefresh = pull >= 80 && configuration.isAtTop
+                tracking = false
+                pull = 0
+                configuration.distance = 0
+                if shouldRefresh { configuration.refresh() }
+                return
+            } else if configuration.isAtTop {
+                // Count deliberate movement even for short/empty documents,
+                // where native rubber-banding may be unavailable.
+                pull = min(160, max(0, pull + event.scrollingDeltaY))
+            } else {
+                pull = 0
+            }
+            configuration.distance = pull
+        }
     }
 }
 

@@ -10,6 +10,7 @@ import UIKit
 @MainActor
 final class AlbumLibraryStore: ObservableObject {
     enum State: Equatable {
+        case initializing
         case needsConfiguration
         case loading
         case loaded
@@ -17,7 +18,8 @@ final class AlbumLibraryStore: ObservableObject {
     }
 
     @Published private(set) var albums: [Album] = []
-    @Published private(set) var state: State = .needsConfiguration
+    // Configuration is not known to be missing until the first reload checks it.
+    @Published private(set) var state: State = .initializing
     @Published private(set) var isSyncing = false
 
     private let configurationStore: ServerConfigurationStore

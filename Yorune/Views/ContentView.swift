@@ -35,7 +35,7 @@ private struct LibraryWindowView: View {
         ZStack(alignment: .bottomTrailing) {
             NavigationSplitView {
                 SidebarView(selection: $selection)
-                    .navigationSplitViewColumnWidth(min: 160, ideal: 190, max: 220)
+                    .navigationSplitViewColumnWidth(min: 150, ideal: 180, max: 220)
             } detail: {
                 LibraryDetailView(
                     library: library,
@@ -95,7 +95,9 @@ private struct LibraryDetailView: View {
                     )
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onChange(of: selection) { _, _ in
             navigationPath = []
         }

@@ -3,6 +3,43 @@ import XCTest
 @testable import Yorune
 
 final class YoruneCoreTests: XCTestCase {
+    @MainActor
+    func testLibraryStartsInitializingWithSavedConfiguration() throws {
+        let suiteName = "YoruneTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let configurationStore = ServerConfigurationStore(
+            defaults: defaults,
+            keychain: MemoryKeychainStore()
+        )
+        try configurationStore.save(ServerConfiguration(
+            serverURL: "https://music.example.com",
+            username: "eli",
+            password: "secret"
+        ))
+
+        let library = AlbumLibraryStore(configurationStore: configurationStore)
+
+        XCTAssertEqual(library.state, .initializing)
+    }
+
+    @MainActor
+    func testLibraryNeedsConfigurationOnlyAfterCheckingSavedConfiguration() async throws {
+        let suiteName = "YoruneTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let configurationStore = ServerConfigurationStore(
+            defaults: defaults,
+            keychain: MemoryKeychainStore()
+        )
+        let library = AlbumLibraryStore(configurationStore: configurationStore)
+
+        XCTAssertEqual(library.state, .initializing)
+        await library.reload()
+        XCTAssertEqual(library.state, .needsConfiguration)
+        XCTAssertFalse(library.isSyncing)
+    }
+
     func testServerConfigurationNormalization() {
         let configuration = ServerConfiguration(
             serverURL: "  https://music.example.com///  ",

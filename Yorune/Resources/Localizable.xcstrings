@@ -1316,6 +1316,54 @@
         }
       }
     },
+    "Pull to Refresh" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下拉刷新"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下拉重新整理"
+          }
+        }
+      }
+    },
+    "Release to Refresh" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "松开刷新"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放開以重新整理"
+          }
+        }
+      }
+    },
+    "Syncing Library" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在同步资料库"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在同步資料庫"
+          }
+        }
+      }
+    },
     "Sync Library" : {
       "localizations" : {
         "zh-Hans" : {

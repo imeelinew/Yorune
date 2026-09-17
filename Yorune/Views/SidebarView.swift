@@ -9,7 +9,7 @@ struct SidebarView: View {
     @Binding var selection: LibrarySection?
 
     var body: some View {
-        List {
+        List(selection: $selection) {
             sidebarRow(
                 .albums,
                 title: "Albums",
@@ -22,6 +22,9 @@ struct SidebarView: View {
             )
         }
         .listStyle(.sidebar)
+        .contentMargins(.horizontal, 8, for: .scrollContent)
+        .contentMargins(.top, 0, for: .scrollContent)
+        .environment(\.defaultMinListRowHeight, 30)
         .scrollContentBackground(.hidden)
         .background(.ultraThinMaterial)
         .navigationTitle("Yorune")
@@ -32,30 +35,20 @@ struct SidebarView: View {
         title: LocalizedStringKey,
         systemImage: String
     ) -> some View {
-        Button {
-            selection = section
-        } label: {
-            Label {
-                Text(title)
-                    .lineLimit(1)
-                    .foregroundStyle(.primary)
-            } icon: {
-                Image(systemName: systemImage)
-                    .foregroundStyle(YoruneStyle.accent)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 5)
-            .background {
-                if selection == section {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color.secondary.opacity(0.22))
-                }
-            }
-            .contentShape(Rectangle())
+        // Match Obelisk's professional sidebar: 3 pt leading inset,
+        // 18 pt icon slot, 8 pt title gap, and a 30 pt row.
+        HStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.system(size: 15))
+                .foregroundStyle(YoruneStyle.accent)
+                .frame(width: 18, height: 18)
+            Text(title)
+                .lineLimit(1)
+                .foregroundStyle(.primary)
         }
-        .buttonStyle(.plain)
-        .listRowInsets(EdgeInsets(top: 1, leading: 4, bottom: 1, trailing: 10))
-        .accessibilityAddTraits(selection == section ? .isSelected : [])
+        .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
+        .contentShape(Rectangle())
+        .listRowInsets(EdgeInsets(top: 1, leading: 3, bottom: 1, trailing: 3))
+        .tag(section)
     }
 }
