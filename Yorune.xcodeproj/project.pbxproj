@@ -58,7 +58,6 @@
 		110000000000000000000020 /* IOSAlbumGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000007 /* IOSAlbumGridView.swift */; };
 		110000000000000000000021 /* IOSAlbumDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000008 /* IOSAlbumDetailView.swift */; };
 		110000000000000000000022 /* IOSNowPlayingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000009 /* IOSNowPlayingView.swift */; };
-		120000000000000000000001 /* YoruneCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220000000000000000000001 /* YoruneCoreTests.swift */; };
 		D00000000000000000000001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = C00000000000000000000002 /* Sparkle */; };
 /* End PBXBuildFile section */
 
@@ -113,7 +112,6 @@
 		210000000000000000000007 /* IOSAlbumGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAlbumGridView.swift; sourceTree = "<group>"; };
 		210000000000000000000008 /* IOSAlbumDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAlbumDetailView.swift; sourceTree = "<group>"; };
 		210000000000000000000009 /* IOSNowPlayingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSNowPlayingView.swift; sourceTree = "<group>"; };
-		220000000000000000000001 /* YoruneCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YoruneCoreTests.swift; sourceTree = "<group>"; };
 		220000000000000000000002 /* YoruneTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = YoruneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -148,7 +146,6 @@
 			isa = PBXGroup;
 			children = (
 				400000000000000000000002 /* Yorune */,
-				40000000000000000000000D /* YoruneTests */,
 				400000000000000000000006 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -278,14 +275,6 @@
 				210000000000000000000005 /* YoruneiOS.entitlements */,
 			);
 			path = iOS;
-			sourceTree = "<group>";
-		};
-		40000000000000000000000D /* YoruneTests */ = {
-			isa = PBXGroup;
-			children = (
-				220000000000000000000001 /* YoruneCoreTests.swift */,
-			);
-			path = YoruneTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -492,7 +481,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				120000000000000000000001 /* YoruneCoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -588,6 +576,7 @@
 		A00000000000000000000004 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = Yorune;
 				CODE_SIGN_ENTITLEMENTS = Yorune/Support/Yorune.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";

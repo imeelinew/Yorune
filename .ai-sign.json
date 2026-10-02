@@ -1,0 +1,19 @@
+{
+  "app": "DerivedData/Build/Products/Release/Yorune.app",
+  "bundle_id": "com.eli.Yorune",
+  "build": [
+    "xcodebuild",
+    "-project",
+    "Yorune.xcodeproj",
+    "-scheme",
+    "Yorune",
+    "-configuration",
+    "Release",
+    "-destination",
+    "generic/platform=macOS",
+    "-derivedDataPath",
+    "DerivedData",
+    "build"
+  ],
+  "output": "/Applications/Yorune.app"
+}
