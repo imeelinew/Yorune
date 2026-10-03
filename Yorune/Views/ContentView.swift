@@ -96,6 +96,11 @@ private struct LibraryDetailView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background {
+                LibraryBackground()
+                    .ignoresSafeArea()
+            }
+            .toolbarBackgroundVisibility(.hidden, for: .automatic)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onChange(of: selection) { _, _ in
@@ -145,6 +150,20 @@ private struct LibraryDetailView: View {
                 }
             }
         )
+    }
+}
+
+private struct LibraryBackground: View {
+    var body: some View {
+        ArtworkTintBackground(
+            maxHeight: 640,
+            lightOpacity: 0.08,
+            darkOpacity: 0.14
+        ) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .scaledToFill()
+        }
     }
 }
 
