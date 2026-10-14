@@ -48,7 +48,7 @@ Navidrome is an excellent self-hosted music server, but a browser player never f
 - **Playback modes**: shuffle, repeat all, and repeat one
 - **Queue management**: inspect, jump to, remove, and reorganize queued tracks
 - **System audio**: AirPlay routing and Space-bar play/pause
-- **Protected credentials**: server details stay local and passwords are stored in Keychain
+- **Local credentials**: server address, username, and password are stored in local app settings
 
 ## Library and Playback
 

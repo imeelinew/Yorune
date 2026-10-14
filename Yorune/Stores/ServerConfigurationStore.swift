@@ -6,28 +6,19 @@ final class ServerConfigurationStore: ObservableObject {
     private enum Keys {
         static let serverURL = "navidrome.serverURL"
         static let username = "navidrome.username"
-        static let keychainService = "com.eli.Yorune.navidrome"
-        static let keychainAccount = "default"
+        static let password = "navidrome.password"
     }
 
     private let defaults: UserDefaults
-    private let keychain: any KeychainStoring
 
-    init(
-        defaults: UserDefaults = .standard,
-        keychain: any KeychainStoring = KeychainStore()
-    ) {
+    init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        self.keychain = keychain
     }
 
     var configuration: ServerConfiguration? {
         guard let serverURL = defaults.string(forKey: Keys.serverURL),
               let username = defaults.string(forKey: Keys.username),
-              let password = try? keychain.read(
-                service: Keys.keychainService,
-                account: Keys.keychainAccount
-              ) else {
+              let password = defaults.string(forKey: Keys.password) else {
             return nil
         }
 
@@ -43,11 +34,7 @@ final class ServerConfigurationStore: ObservableObject {
             throw ServerConfigurationError.invalid
         }
 
-        try keychain.save(
-            configuration.password,
-            service: Keys.keychainService,
-            account: Keys.keychainAccount
-        )
+        defaults.set(configuration.password, forKey: Keys.password)
         defaults.set(configuration.serverURL, forKey: Keys.serverURL)
         defaults.set(configuration.username, forKey: Keys.username)
         objectWillChange.send()

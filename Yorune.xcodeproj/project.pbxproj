@@ -17,7 +17,6 @@
 		100000000000000000000008 /* ServerConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000009 /* ServerConfiguration.swift */; };
 		100000000000000000000009 /* ServerConfigurationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000A /* ServerConfigurationStore.swift */; };
 		10000000000000000000000A /* AlbumLibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000B /* AlbumLibraryStore.swift */; };
-		10000000000000000000000B /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000C /* KeychainStore.swift */; };
 		10000000000000000000000C /* NavidromeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000D /* NavidromeClient.swift */; };
 		10000000000000000000000D /* AlbumArtworkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000E /* AlbumArtworkView.swift */; };
 		10000000000000000000000E /* SettingsComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000F /* SettingsComponents.swift */; };
@@ -48,7 +47,6 @@
 		110000000000000000000009 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000017 /* AppSettings.swift */; };
 		11000000000000000000000A /* ServerConfigurationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000A /* ServerConfigurationStore.swift */; };
 		11000000000000000000000B /* AlbumLibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000B /* AlbumLibraryStore.swift */; };
-		11000000000000000000000C /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000C /* KeychainStore.swift */; };
 		11000000000000000000000D /* NavidromeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000D /* NavidromeClient.swift */; };
 		11000000000000000000000E /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000008 /* AppModel.swift */; };
 		11000000000000000000000F /* AlbumArtworkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000E /* AlbumArtworkView.swift */; };
@@ -83,7 +81,6 @@
 		200000000000000000000009 /* ServerConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConfiguration.swift; sourceTree = "<group>"; };
 		20000000000000000000000A /* ServerConfigurationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConfigurationStore.swift; sourceTree = "<group>"; };
 		20000000000000000000000B /* AlbumLibraryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumLibraryStore.swift; sourceTree = "<group>"; };
-		20000000000000000000000C /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		20000000000000000000000D /* NavidromeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavidromeClient.swift; sourceTree = "<group>"; };
 		20000000000000000000000E /* AlbumArtworkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumArtworkView.swift; sourceTree = "<group>"; };
 		20000000000000000000000F /* SettingsComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsComponents.swift; sourceTree = "<group>"; };
@@ -225,7 +222,6 @@
 			children = (
 				200000000000000000000016 /* LaunchAtLogin.swift */,
 				20000000000000000000001D /* UpdateService.swift */,
-				20000000000000000000000C /* KeychainStore.swift */,
 				20000000000000000000000D /* NavidromeClient.swift */,
 			);
 			path = Services;
@@ -431,7 +427,6 @@
 				100000000000000000000008 /* ServerConfiguration.swift in Sources */,
 				100000000000000000000009 /* ServerConfigurationStore.swift in Sources */,
 				10000000000000000000000A /* AlbumLibraryStore.swift in Sources */,
-				10000000000000000000000B /* KeychainStore.swift in Sources */,
 				10000000000000000000000C /* NavidromeClient.swift in Sources */,
 				10000000000000000000000D /* AlbumArtworkView.swift in Sources */,
 				10000000000000000000000E /* SettingsComponents.swift in Sources */,
@@ -469,7 +464,6 @@
 				110000000000000000000009 /* AppSettings.swift in Sources */,
 				11000000000000000000000A /* ServerConfigurationStore.swift in Sources */,
 				11000000000000000000000B /* AlbumLibraryStore.swift in Sources */,
-				11000000000000000000000C /* KeychainStore.swift in Sources */,
 				11000000000000000000000D /* NavidromeClient.swift in Sources */,
 				11000000000000000000000E /* AppModel.swift in Sources */,
 				11000000000000000000000F /* AlbumArtworkView.swift in Sources */,
@@ -576,10 +570,10 @@
 		A00000000000000000000004 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = Yorune;
 				CODE_SIGN_ENTITLEMENTS = Yorune/Support/Yorune.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;

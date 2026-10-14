@@ -178,6 +178,8 @@ final class PlaybackController: ObservableObject {
     /// Local files bypass AVPlayer's network-stall waiting state.
     private var currentPlaybackIsLocal = false
     private var isPreparingPlayerItem = false
+    private var playbackRequestedAt: ContinuousClock.Instant?
+    private var playbackStartPosition = 0.0
     private let isMutedForUITesting = ProcessInfo.processInfo.environment["YORUNE_UI_TEST_MUTED"] == "1"
 
     private enum DefaultsKey {
@@ -665,6 +667,8 @@ final class PlaybackController: ObservableObject {
     }
 
     private func loadCurrentSong(resumeAt time: Double, shouldPlay: Bool = true) {
+        playbackRequestedAt = shouldPlay ? .now : nil
+        playbackStartPosition = time
         loadingTask?.cancel()
         retryTask?.cancel()
         retryTask = nil
@@ -745,6 +749,11 @@ final class PlaybackController: ObservableObject {
         currentPlaybackIsLocal = isLocal
         isPreparingPlayerItem = false
         let item = AVPlayerItem(url: url)
+        // A small forward buffer keeps progressive MP4/audio streams responsive.
+        // Zero lets AVFoundation choose a potentially much larger buffer.
+        if !isLocal {
+            item.preferredForwardBufferDuration = 1
+        }
 #if os(iOS)
         activateAudioSession()
 #endif
@@ -765,7 +774,7 @@ final class PlaybackController: ObservableObject {
         } else {
             player?.pause()
         }
-        playbackLogger.info("Playback started from \(isLocal ? "local storage" : "the server")")
+        playbackLogger.info("Player item installed from \(isLocal ? "local storage" : "the server")")
     }
 
     private func startPlayer() {
@@ -774,11 +783,10 @@ final class PlaybackController: ObservableObject {
               pendingSeekOnReady <= 0,
               pendingObservedSeek == nil,
               let player else { return }
-        if currentPlaybackIsLocal {
-            player.playImmediately(atRate: 1)
-        } else {
-            player.play()
-        }
+        // Bypass the initial 'can this play to the end without stalling?' wait.
+        // Keep automaticallyWaitsToMinimizeStalling enabled for remote items so
+        // buffering and resumption still work if the connection later runs dry.
+        player.playImmediately(atRate: 1)
     }
 
     private func observePlayer(_ player: AVPlayer) {
@@ -874,6 +882,15 @@ final class PlaybackController: ObservableObject {
                 guard let self else { return }
                 let seconds = time.seconds
                 if seconds.isFinite {
+                    if let requestedAt = playbackRequestedAt,
+                       shouldPlayCurrentItem,
+                       pendingSeekOnReady <= 0,
+                       pendingObservedSeek == nil,
+                       seconds > playbackStartPosition + 0.05 {
+                        let latency = requestedAt.duration(to: .now)
+                        playbackLogger.info("Playback advanced after \(String(describing: latency), privacy: .public) from \(self.currentPlaybackIsLocal ? "local storage" : "the server")")
+                        playbackRequestedAt = nil
+                    }
                     if let pendingObservedSeek {
                         let reachedTarget = abs(seconds - pendingObservedSeek.target) < 1
                         if reachedTarget {
