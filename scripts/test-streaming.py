@@ -6,6 +6,7 @@ only AppModel (UI composition) and artwork fetching. No production defaults are 
 """
 import argparse
 import http.server
+import hashlib
 import json
 import pathlib
 import re
@@ -20,6 +21,7 @@ import uuid
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--ios', action='store_true')
+parser.add_argument('--completion-only', action='store_true', help='Only test audio completion before HTTP completion')
 parser.add_argument('--baseline', action='store_true', help='Use HEAD playback implementation for comparison')
 args = parser.parse_args()
 if not shutil.which('ffmpeg'):
@@ -44,40 +46,60 @@ with tempfile.TemporaryDirectory(prefix='yorune-streaming-') as directory:
             track = urllib.parse.parse_qs(parsed.query).get('id', [''])[0]
             if parsed.path == '/stats':
                 with lock:
-                    result = json.dumps(stats[track]).encode()
+                    result = json.dumps(stats.get(track, dict(sent=0, size=1))).encode()
                 self.send_response(200)
                 self.send_header('Content-Length', str(len(result)))
                 self.end_headers()
                 self.wfile.write(result)
                 return
-            extension = 'm4a' if track.startswith('m4a') else ('flac' if track.startswith('flac') else 'mp3')
+            extension = 'm4a' if 'm4a' in track else ('flac' if 'flac' in track else 'mp3')
             data = media[extension]
             start, end = 0, len(data) - 1
-            if match := re.match(r'bytes=(\d+)-(\d*)', self.headers.get('Range', '')):
+            if not track.startswith(('norange', 'chunked')) and (match := re.match(r'bytes=(\d+)-(\d*)', self.headers.get('Range', ''))):
                 start = int(match[1])
                 end = min(int(match[2]) if match[2] else end, end)
-            self.send_response(206 if self.headers.get('Range') else 200)
+            ranged = bool(self.headers.get('Range')) and not track.startswith(('norange', 'chunked'))
+            self.send_response(206 if ranged else 200)
             self.send_header('Content-Type', {'m4a': 'audio/mp4', 'mp3': 'audio/mpeg', 'flac': 'audio/flac'}[extension])
             self.send_header('Cache-Control', 'no-store')
             self.send_header('Accept-Ranges', 'bytes')
-            self.send_header('Content-Length', str(end - start + 1))
-            if self.headers.get('Range'):
+            if track.startswith(('chunked', 'delayed')):
+                if track.startswith('delayed'):
+                    self.send_header('Transfer-Encoding', 'chunked')
+                self.send_header('Connection', 'close')
+                self.close_connection = True
+            else:
+                self.send_header('Content-Length', str(end - start + 1))
+            if ranged:
                 self.send_header('Content-Range', f'bytes {start}-{end}/{len(data)}')
             self.end_headers()
             with lock:
-                stats.setdefault(track, dict(sent=0, size=len(data)))
+                stats.setdefault(track, dict(sent=0, size=len(data), requests=0, downloads=0, sha256=hashlib.sha256(data).hexdigest()))
+                stats[track]['requests'] += 1
+                stats[track]['downloads'] += int('download' in parsed.path)
             try:
                 for offset in range(start, end + 1, 4096):
                     if track.startswith('stall') and offset >= 65536 and offset < 69632:
                         time.sleep(8)
                     chunk = data[offset:min(offset + 4096, end + 1)]
-                    self.wfile.write(chunk)
+                    if track.startswith('truncated') and offset >= start + 4096:
+                        self.close_connection = True
+                        return
+                    if track.startswith('delayed'):
+                        self.wfile.write(f'{len(chunk):x}\r\n'.encode() + chunk + b'\r\n')
+                    else:
+                        self.wfile.write(chunk)
                     self.wfile.flush()
                     with lock:
                         stats[track]['sent'] += len(chunk)
-                    if 'download' not in parsed.path:
+                    if 'download' not in parsed.path and not track.startswith(('complete', 'norange', 'chunked', 'delayed')):
                         # ALAC/FLAC metadata at the end forces byte-range requests.
-                        time.sleep(len(chunk) / (8192 if extension == 'm4a' else 24576))
+                        time.sleep(len(chunk) / (262144 if ('pinned' in track or track.startswith(('seek', 'cancel-save'))) else (8192 if extension == 'm4a' else 24576)))
+                if track.startswith('delayed'):
+                    if end == len(data) - 1:
+                        time.sleep(6)
+                    self.wfile.write(b'0\r\n\r\n')
+                    self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
                 pass
 
@@ -93,7 +115,7 @@ with tempfile.TemporaryDirectory(prefix='yorune-streaming-') as directory:
     sources = [controller, ROOT / 'scripts/streaming/PlaybackSmoke.swift',
                ROOT / 'Yorune/Models/Album.swift', ROOT / 'Yorune/Models/ServerConfiguration.swift',
                ROOT / 'Yorune/Stores/ServerConfigurationStore.swift', ROOT / 'Yorune/Stores/AlbumLibraryStore.swift',
-               ROOT / 'Yorune/Services/NavidromeClient.swift']
+               ROOT / 'Yorune/Services/NavidromeClient.swift', ROOT / 'Yorune/Services/StreamingAudioCache.swift']
     executable = work / 'streaming-smoke'
     command = ['xcrun']
     if args.ios:
@@ -105,6 +127,6 @@ with tempfile.TemporaryDirectory(prefix='yorune-streaming-') as directory:
     run = ['xcrun', 'simctl', 'spawn', 'booted'] if args.ios else []
     print(f'Testing {"iOS Simulator" if args.ios else "macOS"} {"baseline" if args.baseline else "current"}', flush=True)
     try:
-        subprocess.run(run + [str(executable), str(server.server_port), '35' if args.baseline else '12'], check=True, timeout=150)
+        subprocess.run(run + [str(executable), str(server.server_port), '35' if args.baseline else '12', 'baseline' if args.baseline else 'current', 'completion' if args.completion_only else 'all'], check=True, timeout=150)
     finally:
         server.shutdown()

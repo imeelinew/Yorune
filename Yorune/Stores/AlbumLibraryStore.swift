@@ -415,6 +415,8 @@ final class DownloadStore: ObservableObject {
     private var tasksBySongID: [String: Task<Void, Never>] = [:]
     private var configurationCancellable: AnyCancellable?
     private var generation = 0
+    private var streamingTokens: [String: UUID] = [:]
+    private var streamingCaches: [String: StreamingAudioCache] = [:]
 #if os(iOS)
     private var backgroundTaskID = UIBackgroundTaskIdentifier.invalid
 #endif
@@ -438,6 +440,7 @@ final class DownloadStore: ObservableObject {
 
     deinit {
         tasksBySongID.values.forEach { $0.cancel() }
+        streamingCaches.values.forEach { $0.cancel() }
     }
 
     func isDownloaded(_ songID: String) -> Bool {
@@ -462,7 +465,10 @@ final class DownloadStore: ObservableObject {
 
         for song in songs where !isDownloaded(song.id) && !isDownloading(song.id) {
             downloadingSongIDs.insert(song.id)
-            pendingSongs.append(song)
+            // Streaming already fetches and saves this song; reuse that transfer.
+            if let stream = streamingCaches[song.id] {
+                stream.retainForDownload()
+            } else { pendingSongs.append(song) }
         }
         updateBackgroundTask()
         startPendingDownloads()
@@ -472,6 +478,8 @@ final class DownloadStore: ObservableObject {
         guard !songIDs.isEmpty else { return }
         pendingSongs.removeAll { songIDs.contains($0.id) }
         for songID in songIDs {
+            streamingCaches.removeValue(forKey: songID)?.discardDownload()
+            streamingTokens.removeValue(forKey: songID)
             tasksBySongID[songID]?.cancel()
             tasksBySongID.removeValue(forKey: songID)
             downloadingSongIDs.remove(songID)
@@ -556,6 +564,60 @@ final class DownloadStore: ObservableObject {
         failure = nil
     }
 
+    func makeStreamingCache(for song: Song, url: URL) throws -> StreamingAudioCache {
+        activateCurrentProfile()
+        let token = UUID()
+        let taskGeneration = generation
+        // Stop a separate manual download before streaming takes ownership.
+        let manuallyRequested = isDownloading(song.id)
+        cancel([song.id])
+        let cache = try StreamingAudioCache(url: url) { [weak self] result in
+            Task { @MainActor [weak self] in
+                guard let self else {
+                    if case .success(let download) = result {
+                        try? FileManager.default.removeItem(at: download.temporaryURL)
+                    }
+                    return
+                }
+                defer {
+                    if streamingTokens[song.id] == token {
+                        streamingTokens.removeValue(forKey: song.id)
+                        streamingCaches.removeValue(forKey: song.id)
+                        downloadingSongIDs.remove(song.id)
+                        updateBackgroundTask()
+                    }
+                }
+                guard taskGeneration == generation, streamingTokens[song.id] == token,
+                      let directoryURL = activeDirectoryURL else {
+                    if case .success(let download) = result {
+                        try? fileManager.removeItem(at: download.temporaryURL)
+                    }
+                    return
+                }
+                switch result {
+                case .success(let download):
+                    defer { try? fileManager.removeItem(at: download.temporaryURL) }
+                    do {
+                        try store(download, songID: song.id, song: song, directoryURL: directoryURL)
+                        await cacheArtwork(for: song, directoryURL: directoryURL, generation: taskGeneration)
+                    } catch { failure = Failure(error: error) }
+                case .failure(let error):
+                    // Report a detached manual download failure; playback owns its own errors.
+                    if isDownloading(song.id), (error as? URLError)?.code != .cancelled {
+                        failure = Failure(error: error)
+                    }
+                }
+            }
+        }
+        if manuallyRequested {
+            cache.retainForDownload()
+            downloadingSongIDs.insert(song.id)
+        }
+        streamingCaches[song.id] = cache
+        streamingTokens[song.id] = token
+        return cache
+    }
+
     private func startPendingDownloads() {
         while tasksBySongID.count < maximumConcurrentDownloads,
               !pendingSongs.isEmpty {
@@ -572,7 +634,7 @@ final class DownloadStore: ObservableObject {
 
     private func performDownload(_ song: Song, generation taskGeneration: Int) async {
         defer {
-            finishDownload(songID: song.id, generation: taskGeneration)
+            if !Task.isCancelled { finishDownload(songID: song.id, generation: taskGeneration) }
         }
 
         guard taskGeneration == generation,
@@ -582,6 +644,7 @@ final class DownloadStore: ObservableObject {
         do {
             let download = try await NavidromeClient(configuration: configuration)
                 .download(songID: song.id)
+            defer { try? fileManager.removeItem(at: download.temporaryURL) }
             try Task.checkCancellation()
             guard taskGeneration == generation else {
                 try? fileManager.removeItem(at: download.temporaryURL)
@@ -715,6 +778,9 @@ final class DownloadStore: ObservableObject {
     }
 
     private func cancelDownloads() {
+        streamingCaches.values.forEach { $0.cancel() }
+        streamingCaches.removeAll()
+        streamingTokens.removeAll()
         generation += 1
         tasksBySongID.values.forEach { $0.cancel() }
         tasksBySongID = [:]

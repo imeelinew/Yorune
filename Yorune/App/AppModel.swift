@@ -151,6 +151,7 @@ final class PlaybackController: ObservableObject {
     private let configurationStore: ServerConfigurationStore
     private let downloads: DownloadStore
     private var player: AVPlayer?
+    private var streamingCache: StreamingAudioCache?
     private var currentIndex: Int?
     private var loadingTask: Task<Void, Never>?
     private var retryTask: Task<Void, Never>?
@@ -269,6 +270,7 @@ final class PlaybackController: ObservableObject {
     }
 
     deinit {
+        streamingCache?.releasePlayback()
         loadingTask?.cancel()
         retryTask?.cancel()
         artworkTask?.cancel()
@@ -620,6 +622,8 @@ final class PlaybackController: ObservableObject {
 
         player?.pause()
         player?.replaceCurrentItem(with: nil)
+        streamingCache?.releasePlayback()
+        streamingCache = nil
         invalidatePendingObservedSeek()
         currentPlaybackIsLocal = false
         isPreparingPlayerItem = false
@@ -735,7 +739,9 @@ final class PlaybackController: ObservableObject {
                 let url = try await NavidromeClient(configuration: configuration)
                     .streamURL(for: song.id)
                 guard !Task.isCancelled else { return }
-                installPlayerItem(at: url, isLocal: false)
+                let cache = try downloads.makeStreamingCache(for: song, url: url)
+                streamingCache = cache
+                installPlayerItem(at: url, isLocal: false, asset: cache.asset)
             } catch {
                 guard !Task.isCancelled else { return }
                 isPreparingPlayerItem = false
@@ -745,10 +751,10 @@ final class PlaybackController: ObservableObject {
         }
     }
 
-    private func installPlayerItem(at url: URL, isLocal: Bool) {
+    private func installPlayerItem(at url: URL, isLocal: Bool, asset: AVURLAsset? = nil) {
         currentPlaybackIsLocal = isLocal
         isPreparingPlayerItem = false
-        let item = AVPlayerItem(url: url)
+        let item = asset.map { AVPlayerItem(asset: $0) } ?? AVPlayerItem(url: url)
         // A small forward buffer keeps progressive MP4/audio streams responsive.
         // Zero lets AVFoundation choose a potentially much larger buffer.
         if !isLocal {
@@ -812,6 +818,8 @@ final class PlaybackController: ObservableObject {
         }
         player?.pause()
         player?.replaceCurrentItem(with: nil)
+        streamingCache?.releasePlayback()
+        streamingCache = nil
     }
 
     private func observeItem(_ item: AVPlayerItem) {
