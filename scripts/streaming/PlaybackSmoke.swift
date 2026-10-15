@@ -42,6 +42,94 @@ let playbackTestDefaults = UserDefaults(suiteName: "Yorune.StreamingSmoke.\(Proc
             }
             return condition()
         }
+        if CommandLine.arguments.count > 4, CommandLine.arguments[4] == "recovery" {
+            let local = song("local-recovery")
+            downloads.download(local)
+            let saved = await waitUntil(10) { downloads.isDownloaded(local.id) }
+            precondition(saved)
+#if os(iOS)
+            // A begin notification is not guaranteed to have a matching end notification.
+            // No competing audio is playing; a fresh user Play must reclaim the session.
+            NotificationCenter.default.post(name: AVAudioSession.interruptionNotification,
+                                            object: AVAudioSession.sharedInstance(),
+                                            userInfo: [AVAudioSessionInterruptionTypeKey: AVAudioSession.InterruptionType.began.rawValue])
+            try await Task.sleep(for: .milliseconds(100))
+            controller.play(local, in: [local])
+            let started = await waitUntil(3) { (player()?.currentTime().seconds ?? 0) > 0.1 }
+            controller.resume()
+            let resumed = await waitUntil(3) { (player()?.currentTime().seconds ?? 0) > 0.1 }
+            print("INTERRUPTION_WITHOUT_END manualPlay=\(started) manualResume=\(resumed) rate=\(player()?.rate ?? -1)")
+            precondition(started && resumed, "Missing interruption end permanently blocks user playback")
+#else
+            controller.play(local, in: [local])
+            let started = await waitUntil(3) { (player()?.currentTime().seconds ?? 0) > 0.1 }
+            precondition(started)
+            print("MAC_COLD_PLAY passed=true audioSessionInterruptionGate=absent")
+#endif
+            precondition(player()?.volume == 0, "Recovery tests must remain muted")
+            controller.pause()
+            controller.seek(to: 30)
+            player()?.currentItem?.cancelPendingSeeks()
+            try await Task.sleep(for: .milliseconds(100))
+            let position = player()?.currentTime().seconds ?? 0
+            controller.resume()
+            let afterCancel = await waitUntil(3) { (player()?.currentTime().seconds ?? 0) > position + 0.1 }
+            print("CANCELLED_SEEK manualResume=\(afterCancel) rate=\(player()?.rate ?? -1)")
+            precondition(afterCancel, "Cancelled seek permanently blocks playback")
+#if os(iOS)
+            func interruption(_ type: AVAudioSession.InterruptionType, resume: Bool = false) async throws {
+                NotificationCenter.default.post(name: AVAudioSession.interruptionNotification,
+                                                object: AVAudioSession.sharedInstance(),
+                                                userInfo: [AVAudioSessionInterruptionTypeKey: type.rawValue,
+                                                           AVAudioSessionInterruptionOptionKey: resume ? AVAudioSession.InterruptionOptions.shouldResume.rawValue : 0])
+                try await Task.sleep(for: .milliseconds(100))
+            }
+            try await interruption(.began)
+            precondition(player()?.rate == 0, "Audio interruption did not pause playback")
+            try await interruption(.ended, resume: true)
+            let autoPosition = player()?.currentTime().seconds ?? 0
+            let autoResumed = await waitUntil(3) { (player()?.currentTime().seconds ?? 0) > autoPosition + 0.1 }
+            precondition(autoResumed, "Normal interruption stopped resuming")
+            try await interruption(.began)
+            controller.pause()
+            try await interruption(.ended, resume: true)
+            precondition(player()?.rate == 0, "User Pause was overridden by interruption end")
+            controller.resume()
+            try await interruption(.began)
+            controller.resume()
+            try await interruption(.ended) // A late end must not undo newer manual Play.
+            let latePosition = player()?.currentTime().seconds ?? 0
+            let lateStillPlaying = await waitUntil(3) { (player()?.currentTime().seconds ?? 0) > latePosition + 0.1 }
+            precondition(lateStillPlaying, "Late interruption end stopped manual playback")
+            let oldPlayer = player()
+            NotificationCenter.default.post(name: AVAudioSession.mediaServicesWereResetNotification,
+                                            object: AVAudioSession.sharedInstance())
+            try await Task.sleep(for: .milliseconds(100))
+            precondition(player() == nil && !controller.isPlaying, "Reset reused the old AVPlayer")
+            controller.resume()
+            let resetResumed = await waitUntil(3) { (player()?.currentTime().seconds ?? 0) > 0.1 && player()?.rate == 1 }
+            precondition(resetResumed && player() !== oldPlayer, "Play after media reset needs an app restart")
+            print("INTERRUPTIONS normalResume=true userPauseRespected=true lateEndIgnored=true mediaResetRecovered=true")
+#endif
+            controller.pause()
+            controller.seek(to: 20)
+            controller.seek(to: 40)
+            controller.resume()
+            let latestSeek = await waitUntil(3) { (player()?.currentTime().seconds ?? 0) >= 40.1 }
+            precondition(latestSeek, "Older cancelled seek interfered with the newer seek")
+            controller.stopAndClearQueue()
+            for _ in 0..<12 {
+                let launch = PlaybackController(configurationStore: store, downloads: downloads)
+                launch.play(local, in: [local])
+                let freshPlayer = Mirror(reflecting: launch).children.first(where: { $0.label == "player" })?.value as? AVPlayer
+                let advanced = await waitUntil(3) { (freshPlayer?.currentTime().seconds ?? 0) > 0.1 }
+                precondition(advanced && freshPlayer?.volume == 0, "Fresh controller failed to start muted playback")
+                launch.stopAndClearQueue()
+            }
+            print("COLD_STARTS passed=12 latestSeekWins=true muted=true")
+            print("DONE recovery")
+            return
+        }
         let completionOnly = CommandLine.arguments.count > 4 && CommandLine.arguments[4] == "completion"
         for format in (completionOnly ? [] : ["m4a", "mp3", "flac", "mp3", "m4a", "flac"]) {
             let track = song(format + "-" + UUID().uuidString)
@@ -50,6 +138,9 @@ let playbackTestDefaults = UserDefaults(suiteName: "Yorune.StreamingSmoke.\(Proc
             let started = await waitUntil(timeout) { (player()?.currentTime().seconds ?? 0) > 0.1 }
             print("START format=\(format) seconds=\(String(format: "%.3f", Date().timeIntervalSince(start))) passed=\(started)")
             guard started else {
+                print("PLAYER STATE", "playerStatus", player()?.status.rawValue as Any, "itemStatus", player()?.currentItem?.status.rawValue as Any, "rate", player()?.rate as Any, "timeControl", player()?.timeControlStatus.rawValue as Any, "loaded", player()?.currentItem?.loadedTimeRanges as Any)
+                for field in Mirror(reflecting: controller).children where ["playbackIntent", "isPreparingPlayerItem", "pendingSeekOnReady", "pendingObservedSeek", "isRetryScheduled"].contains(field.label ?? "") { print("CONTROLLER STATE", field.label!, field.value) }
+                if let (data, _) = try? await URLSession.shared.data(from: URL(string: "http://127.0.0.1:\(port)/stats?id=\(track.id)")!) { print("FAILED TRANSFER", String(decoding: data, as: UTF8.self)) }
                 print("PLAYER FAILED", player()?.currentItem?.error as Any, player()?.status as Any, player()?.currentItem?.status as Any, player()?.reasonForWaitingToPlay as Any)
                 controller.stopAndClearQueue()
                 precondition(timeout >= 35, "Remote audio missed startup deadline")

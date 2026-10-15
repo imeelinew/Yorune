@@ -2,9 +2,12 @@
 """Local, bounded AVPlayer regression tests; no downloads or package installation.
 Requires installed Xcode, Python 3 and ffmpeg. --ios uses an already booted simulator.
 The harness compiles the production PlaybackController and stores directly, omitting
-only AppModel (UI composition) and artwork fetching. No production defaults are used.
+AppModel (UI composition), artwork fetching and system media controls.
+System media controls are tested in the app; a standalone CLI must not compete
+with running apps for Now Playing ownership. No production defaults are used.
 """
 import argparse
+import os
 import http.server
 import hashlib
 import json
@@ -21,6 +24,9 @@ import uuid
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--ios', action='store_true')
+parser.add_argument('--serve-app', action='store_true', help='Serve the same fixtures to the simulator app for manual UI verification')
+parser.add_argument('--port-file', type=pathlib.Path)
+parser.add_argument('--recovery-only', action='store_true', help='Test interruption and cancelled-seek recovery')
 parser.add_argument('--completion-only', action='store_true', help='Only test audio completion before HTTP completion')
 parser.add_argument('--baseline', action='store_true', help='Use HEAD playback implementation for comparison')
 args = parser.parse_args()
@@ -51,6 +57,24 @@ with tempfile.TemporaryDirectory(prefix='yorune-streaming-') as directory:
                 self.send_header('Content-Length', str(len(result)))
                 self.end_headers()
                 self.wfile.write(result)
+                return
+            action = parsed.path.rsplit('/', 1)[-1]
+            if action in ['getAlbumList2.view', 'getAlbum.view']:
+                album = dict(id='playback-fixtures', name='Playback tests', artist='Yorune')
+                if action == 'getAlbumList2.view':
+                    offset = int(urllib.parse.parse_qs(parsed.query).get('offset', ['0'])[0])
+                    payload = dict(albumList2=dict(album=[album] if offset == 0 else []))
+                else:
+                    album['song'] = [dict(id='complete-' + fmt + '-ui', title=fmt.upper() + ' test',
+                                          artist='Yorune', album='Playback tests', duration=120, track=i + 1)
+                                     for i, fmt in enumerate(['mp3', 'm4a', 'flac'])]
+                    payload = dict(album=album)
+                body = json.dumps({'subsonic-response': dict(status='ok', version='1.16.1', **payload)}).encode()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
                 return
             extension = 'm4a' if 'm4a' in track else ('flac' if 'flac' in track else 'mp3')
             data = media[extension]
@@ -105,11 +129,33 @@ with tempfile.TemporaryDirectory(prefix='yorune-streaming-') as directory:
 
     server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
+    if args.serve_app:
+        if args.port_file:
+            args.port_file.write_text(str(server.server_port))
+        print(f'UI fixture server ready: {server.server_port}. Launch the app with YORUNE_UI_TEST_MUTED=1.', flush=True)
+        try:
+            threading.Event().wait()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            server.shutdown()
+        raise SystemExit(0)
     source = ROOT / 'Yorune/App/AppModel.swift'
     text = subprocess.check_output(['git', 'show', 'HEAD:Yorune/App/AppModel.swift'], cwd=ROOT, text=True) if args.baseline else source.read_text()
     start = text.index('@MainActor\nfinal class AppModel:')
     end = text.index('@MainActor\nfinal class PlaybackController:')
     text = (text[:start] + text[end:]).replace('UserDefaults.standard', 'playbackTestDefaults')
+    # Keep the production audio state machine and AVPlayer intact, while isolating
+    # process-global Now Playing/remote commands from the user's running apps.
+    for method in ['configureRemoteCommands', 'updateRemoteCommandAvailability',
+                   'updateRemoteCommandModes', 'updateNowPlayingInfo']:
+        declaration = text.index('    private func ' + method + '(')
+        opening = text.index('{', declaration)
+        depth, closing = 1, opening + 1
+        while depth:
+            depth += (text[closing] == '{') - (text[closing] == '}')
+            closing += 1
+        text = text[:opening] + '{ /* System media controls are isolated in this CLI test. */ }' + text[closing:]
     controller = work / 'PlaybackController.swift'
     controller.write_text(text)
     sources = [controller, ROOT / 'scripts/streaming/PlaybackSmoke.swift',
@@ -127,6 +173,6 @@ with tempfile.TemporaryDirectory(prefix='yorune-streaming-') as directory:
     run = ['xcrun', 'simctl', 'spawn', 'booted'] if args.ios else []
     print(f'Testing {"iOS Simulator" if args.ios else "macOS"} {"baseline" if args.baseline else "current"}', flush=True)
     try:
-        subprocess.run(run + [str(executable), str(server.server_port), '35' if args.baseline else '12', 'baseline' if args.baseline else 'current', 'completion' if args.completion_only else 'all'], check=True, timeout=150)
+        subprocess.run(run + [str(executable), str(server.server_port), '35' if args.baseline else '12', 'baseline' if args.baseline else 'current', 'recovery' if args.recovery_only else ('completion' if args.completion_only else 'all')], check=True, timeout=150, env=os.environ | {'YORUNE_UI_TEST_MUTED': '1', 'SIMCTL_CHILD_YORUNE_UI_TEST_MUTED': '1'})
     finally:
         server.shutdown()

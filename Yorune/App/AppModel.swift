@@ -110,6 +110,12 @@ final class AppModel: ObservableObject {
             }
             .store(in: &cancellables)
 
+        // The root iOS alert reads this nested store through AppModel.
+        playback.$failure
+            .dropFirst()
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+
         settings.appearance.apply()
     }
 
@@ -321,16 +327,15 @@ final class PlaybackController: ObservableObject {
     }
 
     func resume() {
-        playbackIntent = true
 #if os(iOS)
-        if isAudioSessionInterrupted {
-            wasPlayingBeforeInterruption = true
-            isPlaying = false
-            isBuffering = false
+        // A user Play is a new activation request, even if the system never sent
+        // the end of an earlier interruption. Successful activation clears that gate.
+        guard activateAudioSession() else {
+            handleAudioActivationFailure()
             return
         }
-        activateAudioSession()
 #endif
+        playbackIntent = true
         if duration > 0, elapsedTime >= duration {
             invalidatePendingObservedSeek()
             player?.seek(to: .zero)
@@ -343,8 +348,10 @@ final class PlaybackController: ObservableObject {
             loadCurrentSong(resumeAt: elapsedTime)
             return
         }
-        guard player != nil else {
+        guard let player, player.currentItem != nil,
+              player.status != .failed, player.currentItem?.status != .failed else {
             if currentSong != nil {
+                retryAttempt = 0
                 loadCurrentSong(resumeAt: elapsedTime)
             }
             return
@@ -475,12 +482,17 @@ final class PlaybackController: ObservableObject {
                 toleranceBefore: .zero,
                 toleranceAfter: .zero
             ) { [weak self] finished in
-                guard finished else { return }
                 Task { @MainActor [weak self] in
                     guard let self,
                           self.seekRequestID == requestID else { return }
                     self.pendingObservedSeek = nil
-                    self.elapsedTime = target
+                    if finished {
+                        self.elapsedTime = target
+                    } else if let actual = self.player?.currentTime().seconds, actual.isFinite {
+                        // Cancellation is a completion too: never leave playback gated
+                        // on a seek whose callback has already returned.
+                        self.elapsedTime = max(actual, 0)
+                    }
                     completion?()
                 }
             }
@@ -707,8 +719,9 @@ final class PlaybackController: ObservableObject {
         pendingSeekOnReady = time
         playbackIntent = shouldPlay
 #if os(iOS)
-        if isAudioSessionInterrupted, shouldPlay {
-            wasPlayingBeforeInterruption = true
+        if shouldPlay, !activateAudioSession() {
+            handleAudioActivationFailure()
+            return
         }
 #endif
         let startsImmediately = shouldPlayCurrentItem
@@ -760,13 +773,11 @@ final class PlaybackController: ObservableObject {
         if !isLocal {
             item.preferredForwardBufferDuration = 1
         }
-#if os(iOS)
-        activateAudioSession()
-#endif
-        if let player {
+        if let player, player.status != .failed {
             player.automaticallyWaitsToMinimizeStalling = !isLocal
             player.replaceCurrentItem(with: item)
         } else {
+            discardPlayer()
             let player = AVPlayer(playerItem: item)
             player.automaticallyWaitsToMinimizeStalling = !isLocal
             self.player = player
@@ -820,6 +831,18 @@ final class PlaybackController: ObservableObject {
         player?.replaceCurrentItem(with: nil)
         streamingCache?.releasePlayback()
         streamingCache = nil
+    }
+
+    /// A failed player or a media-services reset needs a new AVPlayer instance.
+    private func discardPlayer() {
+        playerStateCancellable = nil
+        if let timeObserver {
+            player?.removeTimeObserver(timeObserver)
+            self.timeObserver = nil
+        }
+        player?.pause()
+        player?.replaceCurrentItem(with: nil)
+        player = nil
     }
 
     private func observeItem(_ item: AVPlayerItem) {
@@ -1032,10 +1055,7 @@ final class PlaybackController: ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                configureAudioSessionCategory()
-                if currentSong != nil {
-                    loadCurrentSong(resumeAt: elapsedTime, shouldPlay: playbackIntent)
-                }
+                handleMediaServicesReset()
             }
         }
         audioSessionObservers = [interruptionObserver, routeObserver, resetObserver]
@@ -1056,14 +1076,51 @@ final class PlaybackController: ObservableObject {
         }
     }
 
-    private func activateAudioSession() {
+    @discardableResult
+    private func activateAudioSession() -> Bool {
         do {
-            try AVAudioSession.sharedInstance().setActive(true)
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playback, mode: .default, policy: .longFormAudio, options: [])
+            try session.setActive(true)
+            isAudioSessionInterrupted = false
+            wasPlayingBeforeInterruption = false
+            return true
         } catch {
             playbackLogger.error(
                 "Audio session activation failed: \(String(describing: error), privacy: .public)"
             )
+            return false
         }
+    }
+
+    private func handleAudioActivationFailure() {
+        player?.pause()
+        playbackIntent = false
+        isPlaying = false
+        isBuffering = false
+        isPreparingPlayerItem = false
+        failure = .unableToPlay
+        updateNowPlayingInfo()
+    }
+
+    private func handleMediaServicesReset() {
+        // AVFoundation objects from the old media service must not be reused.
+        // Wait for a user Play before activating the newly configured session.
+        playbackIntent = false
+        isAudioSessionInterrupted = false
+        wasPlayingBeforeInterruption = false
+        isPlaying = false
+        isBuffering = false
+        loadingTask?.cancel()
+        retryTask?.cancel()
+        isRetryScheduled = false
+        invalidatePendingObservedSeek()
+        detachCurrentPlayerItem()
+        discardPlayer()
+        isPreparingPlayerItem = false
+        configureAudioSessionCategory()
+        updateNowPlayingInfo()
+        playbackLogger.info("Media services reset; player discarded and waiting for user playback")
     }
 
     private func handleAudioInterruption(_ notification: Notification) {
@@ -1082,6 +1139,9 @@ final class PlaybackController: ObservableObject {
             isBuffering = false
             updateNowPlayingInfo()
         case .ended:
+            // An explicit Play may already have reactivated the session. A late end
+            // notification must not undo that newer user request.
+            guard isAudioSessionInterrupted else { return }
             let rawOptions = notification.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
             let options = AVAudioSession.InterruptionOptions(rawValue: rawOptions)
             isAudioSessionInterrupted = false
@@ -1091,7 +1151,10 @@ final class PlaybackController: ObservableObject {
                 playbackIntent = false
                 return
             }
-            activateAudioSession()
+            guard activateAudioSession() else {
+                handleAudioActivationFailure()
+                return
+            }
             playbackIntent = true
             startPlayer()
             isPlaying = true
