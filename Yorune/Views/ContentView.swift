@@ -75,36 +75,59 @@ private struct LibraryDetailView: View {
     @ObservedObject var playback: PlaybackController
     let selection: LibrarySection?
     let openSettings: () -> Void
-    @State private var navigationPath: [Album] = []
+    @State private var selectedAlbum: Album?
+    @State private var searchText = ""
 
     var body: some View {
-        NavigationStack(path: $navigationPath) {
-            Group {
-                switch selection {
-                case .downloads:
-                    DownloadedAlbumGridView(
-                        downloads: downloads,
-                        playback: playback
-                    )
-                default:
-                    AlbumGridView(
-                        library: library,
-                        downloads: downloads,
-                        playback: playback,
-                        openSettings: openSettings
-                    )
+        NavigationStack {
+            AlbumPageNavigation(album: $selectedAlbum) {
+                libraryContent
+            } detail: { album in
+                AlbumDetailView(
+                    album: album,
+                    downloads: downloads,
+                    playback: playback,
+                    initialSongs: selection == .downloads
+                        ? downloads.offlineSongs(in: album.id)
+                        : library.cachedSongs(in: album),
+                    songLoader: { album in
+                        if selection == .downloads {
+                            return downloads.offlineSongs(in: album.id)
+                        }
+                        return try await library.fetchSongs(in: album)
+                    },
+                    isOfflineLibrary: selection == .downloads
+                )
+            }
+            .id(selection)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background {
+                if let selectedAlbum {
+                    AlbumDetailBackground(url: selectedAlbum.artworkURL)
+                        .ignoresSafeArea()
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .navigationTitle(selectedAlbum?.title ?? String(localized: selection == .downloads ? "Downloaded" : "Albums"))
+            .toolbarBackgroundVisibility(selectedAlbum == nil ? .automatic : .hidden, for: .automatic)
+            .searchable(text: $searchText, placement: .toolbar, prompt: Text("Search Albums"))
+            .toolbar {
+                if selectedAlbum != nil {
+                    ToolbarItem(placement: .navigation) {
+                        Button { selectedAlbum = nil } label: {
+                            Label("Back", systemImage: "chevron.backward")
+                        }
+                        .keyboardShortcut("[", modifiers: .command)
+                    }
+                }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onChange(of: selection) { _, _ in
-            navigationPath = []
+            selectedAlbum = nil
+            searchText = ""
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if navigationPath.isEmpty {
-                PlaybackBarInset(playback: playback)
-            }
+            PlaybackBarInset(playback: playback)
         }
         .alert("Unable to Play", isPresented: failurePresented) {
             Button("Retry") {
@@ -123,6 +146,30 @@ private struct LibraryDetailView: View {
                 Text(verbatim: message)
             }
         }
+    }
+
+    private var libraryContent: some View {
+        Group {
+            switch selection {
+            case .downloads:
+                DownloadedAlbumGridView(
+                    downloads: downloads,
+                    playback: playback,
+                    searchText: $searchText,
+                    openAlbum: { selectedAlbum = $0 }
+                )
+            default:
+                AlbumGridView(
+                    library: library,
+                    downloads: downloads,
+                    playback: playback,
+                    openSettings: openSettings,
+                    searchText: $searchText,
+                    openAlbum: { selectedAlbum = $0 }
+                )
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var failurePresented: Binding<Bool> {

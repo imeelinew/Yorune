@@ -7,7 +7,8 @@ struct AlbumGridView: View {
     @ObservedObject var playback: PlaybackController
     let openSettings: () -> Void
 
-    @State private var searchText = ""
+    @Binding var searchText: String
+    let openAlbum: (Album) -> Void
     @State private var isAtTop = true
     @State private var pullDistance: CGFloat = 0
     @State private var refreshRequested = false
@@ -75,7 +76,6 @@ struct AlbumGridView: View {
                 value: library.isSyncing || refreshRequested || pullDistance > 0
             )
         }
-        .navigationTitle("Albums")
         .accessibilityAction(named: Text("Sync Library")) {
             refresh()
         }
@@ -137,7 +137,9 @@ struct AlbumGridView: View {
             } else {
                 LazyVGrid(columns: columns, alignment: .leading, spacing: 24) {
                     ForEach(sortedAlbums) { album in
-                        NavigationLink(value: album) {
+                        Button {
+                            openAlbum(album)
+                        } label: {
                             AlbumCardView(album: album)
                         }
                         .buttonStyle(.plain)
@@ -145,22 +147,6 @@ struct AlbumGridView: View {
                 }
                 .padding(24)
             }
-        }
-        .searchable(
-            text: $searchText,
-            placement: .toolbar,
-            prompt: Text("Search Albums")
-        )
-        .navigationDestination(for: Album.self) { album in
-            AlbumDetailView(
-                album: album,
-                downloads: downloads,
-                playback: playback,
-                initialSongs: library.cachedSongs(in: album),
-                songLoader: { album in
-                    try await library.fetchSongs(in: album)
-                }
-            )
         }
     }
 
@@ -263,7 +249,8 @@ struct DownloadedAlbumGridView: View {
     @ObservedObject var downloads: DownloadStore
     @ObservedObject var playback: PlaybackController
 
-    @State private var searchText = ""
+    @Binding var searchText: String
+    let openAlbum: (Album) -> Void
 
     private let columns = [
         GridItem(.adaptive(minimum: 140, maximum: 220), spacing: 20, alignment: .top)
@@ -281,7 +268,9 @@ struct DownloadedAlbumGridView: View {
                 ScrollView {
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 24) {
                         ForEach(sortedAlbums) { album in
-                            NavigationLink(value: album) {
+                            Button {
+                                openAlbum(album)
+                            } label: {
                                 AlbumCardView(album: album)
                             }
                             .buttonStyle(.plain)
@@ -295,24 +284,6 @@ struct DownloadedAlbumGridView: View {
                     .padding(24)
                 }
             }
-        }
-        .searchable(
-            text: $searchText,
-            placement: .toolbar,
-            prompt: Text("Search Albums")
-        )
-        .navigationTitle("Downloaded")
-        .navigationDestination(for: Album.self) { album in
-            AlbumDetailView(
-                album: album,
-                downloads: downloads,
-                playback: playback,
-                initialSongs: downloads.offlineSongs(in: album.id),
-                songLoader: { album in
-                    downloads.offlineSongs(in: album.id)
-                },
-                isOfflineLibrary: true
-            )
         }
     }
 
@@ -330,7 +301,8 @@ struct DownloadedAlbumGridView: View {
     }
 }
 
-private struct AlbumDetailView: View {
+struct AlbumDetailView: View {
+
     private enum LoadState {
         case loading
         case loaded([Song])
@@ -363,20 +335,9 @@ private struct AlbumDetailView: View {
 
     var body: some View {
         trackContent
-            .background {
-                AlbumDetailBackground(url: album.artworkURL)
-                    .ignoresSafeArea()
+            .task(id: album.id) {
+                await loadSongs()
             }
-            .navigationTitle(album.title)
-            .toolbarBackgroundVisibility(.hidden, for: .automatic)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                if playback.currentSong != nil {
-                    PlayerBar(playback: playback)
-                }
-            }
-        .task(id: album.id) {
-            await loadSongs()
-        }
     }
 
     @ViewBuilder
@@ -451,6 +412,7 @@ private struct AlbumDetailView: View {
                                 }
                             }
                         }
+                        .modifier(AlbumDetailEntrance(delay: 0.1))
                     }
                     .padding(.vertical, 24)
                 }
@@ -475,6 +437,7 @@ private struct AlbumDetailView: View {
         return HStack(alignment: .top, spacing: 20) {
             AlbumArtworkView(url: album.artworkURL, cornerRadius: 8)
                 .frame(width: 180, height: 180)
+                .modifier(AlbumDetailEntrance(isArtwork: true))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Album")
@@ -504,6 +467,7 @@ private struct AlbumDetailView: View {
                 headerButtons(songs)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .modifier(AlbumDetailEntrance(delay: 0.05))
         }
     }
 
