@@ -363,12 +363,7 @@ private struct AlbumDetailView: View {
 
     var body: some View {
         trackContent
-            .background {
-                AlbumDetailBackground(url: album.artworkURL)
-                    .ignoresSafeArea()
-            }
             .navigationTitle(album.title)
-            .toolbarBackgroundVisibility(.hidden, for: .automatic)
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if playback.currentSong != nil {
                     PlayerBar(playback: playback)
