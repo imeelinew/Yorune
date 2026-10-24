@@ -40,6 +40,9 @@ struct IOSNowPlayingView: View {
         .environment(\.colorScheme, .dark)
         .tint(.white)
         .presentationDragIndicator(.visible)
+        .presentationBackground {
+            IOSNowPlayingBackground(url: playback.currentSong?.artworkURL)
+        }
     }
 
     // MARK: - Sections
@@ -278,8 +281,35 @@ private struct IOSNowPlayingQueueRow: View {
     }
 }
 
-/// Keeps 120 Hz drag updates local so the artwork and controls are not
-/// recomputed for every finger movement.
+private struct IOSNowPlayingBackground: View {
+    let url: URL?
+
+    var body: some View {
+        ZStack {
+            Color(red: 0.12, green: 0.12, blue: 0.14)
+
+            GeometryReader { geometry in
+                AlbumArtworkView(url: url, cornerRadius: 0)
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .scaleEffect(1.6)
+                    .blur(radius: 80)
+                    .saturation(1.3)
+            }
+
+            LinearGradient(
+                colors: [.black.opacity(0.15), .black.opacity(0.55)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Keeps 120 Hz drag updates local so the artwork and blurred background are
+/// not recomputed for every finger movement.
 private struct IOSPlaybackProgress: View {
     let songID: String?
     let elapsedTime: Double

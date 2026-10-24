@@ -51,8 +51,19 @@ struct IOSAlbumDetailView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            AlbumDetailBackground(
+                url: album.artworkURL,
+                maxHeight: 560,
+                lightOpacity: 0.45,
+                darkOpacity: 0.5
+            )
+            .ignoresSafeArea()
+        }
         .navigationTitle(album.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
         .task(id: album.id) {
             await load()
         }
