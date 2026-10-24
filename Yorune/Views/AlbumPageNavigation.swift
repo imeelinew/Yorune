@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// AppKit owns page snapshots, interactive tracking, and completion/cancellation.
+/// AppKit owns live page layers, interactive tracking, and completion/cancellation.
 /// SwiftUI owns the selected album and the content of each page.
 struct AlbumPageNavigation<Root: View, Detail: View>: NSViewControllerRepresentable {
     @Binding var album: Album?
@@ -13,6 +13,9 @@ struct AlbumPageNavigation<Root: View, Detail: View>: NSViewControllerRepresenta
 
     func makeNSViewController(context: Context) -> NSPageController {
         let controller = NSPageController()
+        // Book mode uses live layers when the container is layer-backed.
+        // SwiftUI content must keep rendering while AppKit moves the pages.
+        controller.view.wantsLayer = true
         controller.transitionStyle = .stackHistory
         controller.delegate = context.coordinator
         controller.arrangedObjects = [Page.library]
@@ -100,7 +103,9 @@ struct AlbumPageNavigation<Root: View, Detail: View>: NSViewControllerRepresenta
         private func content(for page: Page) -> AnyView {
             switch page {
             case .library:
-                AnyView(configuration.root().environment(\.self, configuration.environment))
+                AnyView(configuration.root()
+                    .background(Color(nsColor: .windowBackgroundColor))
+                    .environment(\.self, configuration.environment))
             case let .album(album):
                 AnyView(configuration.detail(album).environment(\.self, configuration.environment))
             }
@@ -112,8 +117,11 @@ struct AlbumPageNavigation<Root: View, Detail: View>: NSViewControllerRepresenta
 
         func pageController(_ pageController: NSPageController, viewControllerForIdentifier identifier: String) -> NSViewController {
             if let host = hosts[identifier] { return host }
-            let host = NSHostingController(rootView: AnyView(EmptyView()))
+            let page = pageController.arrangedObjects.compactMap { $0 as? Page }
+                .first { self.identifier(for: $0) == identifier } ?? .library
+            let host = NSHostingController(rootView: content(for: page))
             host.sizingOptions = []
+            host.view.wantsLayer = true
             host.view.autoresizingMask = [.width, .height]
             hosts[identifier] = host
             return host
@@ -124,8 +132,13 @@ struct AlbumPageNavigation<Root: View, Detail: View>: NSViewControllerRepresenta
         }
 
         func pageController(_ pageController: NSPageController, prepare viewController: NSViewController, with object: Any?) {
-            guard let page = object as? Page,
-                  let host = viewController as? NSHostingController<AnyView> else { return }
+            guard let host = viewController as? NSHostingController<AnyView> else { return }
+            // AppKit also asks for a default rendering with a nil object.
+            // It must contain the same complete page, rather than EmptyView.
+            let page = (object as? Page) ?? pageController.arrangedObjects
+                .compactMap { $0 as? Page }
+                .first { hosts[identifier(for: $0)] === host }
+            guard let page else { return }
             host.rootView = content(for: page)
             host.view.frame = pageController.view.bounds
             host.view.layoutSubtreeIfNeeded()

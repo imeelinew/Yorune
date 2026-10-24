@@ -314,6 +314,7 @@ struct AlbumDetailView: View {
     @ObservedObject var playback: PlaybackController
     let songLoader: @MainActor (Album) async throws -> [Song]
     let isOfflineLibrary: Bool
+    let backgroundTopInset: CGFloat
 
     @State private var state: LoadState
 
@@ -323,18 +324,29 @@ struct AlbumDetailView: View {
         playback: PlaybackController,
         initialSongs: [Song]?,
         songLoader: @escaping @MainActor (Album) async throws -> [Song],
-        isOfflineLibrary: Bool = false
+        isOfflineLibrary: Bool = false,
+        backgroundTopInset: CGFloat = 0
     ) {
         self.album = album
         self.downloads = downloads
         self.playback = playback
         self.songLoader = songLoader
         self.isOfflineLibrary = isOfflineLibrary
+        self.backgroundTopInset = backgroundTopInset
         _state = State(initialValue: initialSongs.map(LoadState.loaded) ?? .loading)
     }
 
     var body: some View {
         trackContent
+            .background {
+                GeometryReader { geometry in
+                    // The AppKit page starts below the toolbar. Match the
+                    // window backdrop's origin so both gradients join seamlessly.
+                    AlbumDetailBackground(url: album.artworkURL)
+                        .frame(height: geometry.size.height + backgroundTopInset)
+                        .offset(y: -backgroundTopInset)
+                }
+            }
             .task(id: album.id) {
                 await loadSongs()
             }

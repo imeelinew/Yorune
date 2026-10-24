@@ -80,35 +80,41 @@ private struct LibraryDetailView: View {
 
     var body: some View {
         NavigationStack {
-            AlbumPageNavigation(album: $selectedAlbum) {
-                libraryContent
-            } detail: { album in
-                AlbumDetailView(
-                    album: album,
-                    downloads: downloads,
-                    playback: playback,
-                    initialSongs: selection == .downloads
-                        ? downloads.offlineSongs(in: album.id)
-                        : library.cachedSongs(in: album),
-                    songLoader: { album in
-                        if selection == .downloads {
-                            return downloads.offlineSongs(in: album.id)
-                        }
-                        return try await library.fetchSongs(in: album)
-                    },
-                    isOfflineLibrary: selection == .downloads
-                )
+            GeometryReader { geometry in
+                AlbumPageNavigation(album: $selectedAlbum) {
+                    libraryContent
+                } detail: { album in
+                    AlbumDetailView(
+                        album: album,
+                        downloads: downloads,
+                        playback: playback,
+                        initialSongs: selection == .downloads
+                            ? downloads.offlineSongs(in: album.id)
+                            : library.cachedSongs(in: album),
+                        songLoader: { album in
+                            if selection == .downloads {
+                                return downloads.offlineSongs(in: album.id)
+                            }
+                            return try await library.fetchSongs(in: album)
+                        },
+                        isOfflineLibrary: selection == .downloads,
+                        backgroundTopInset: geometry.safeAreaInsets.top
+                    )
+                }
+                .id(selection)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .id(selection)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background {
-                if let selectedAlbum {
-                    AlbumDetailBackground(url: selectedAlbum.artworkURL)
-                        .ignoresSafeArea()
+                ArtworkTintBackground {
+                    if let selectedAlbum {
+                        AlbumArtworkView(url: selectedAlbum.artworkURL, cornerRadius: 0)
+                    }
                 }
+                .ignoresSafeArea()
             }
             .navigationTitle(selectedAlbum?.title ?? String(localized: selection == .downloads ? "Downloaded" : "Albums"))
-            .toolbarBackgroundVisibility(selectedAlbum == nil ? .automatic : .hidden, for: .automatic)
+            .toolbarBackgroundVisibility(.hidden, for: .automatic)
             .searchable(text: $searchText, placement: .toolbar, prompt: Text("Search Albums"))
             .toolbar {
                 if selectedAlbum != nil {
