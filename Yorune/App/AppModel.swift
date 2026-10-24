@@ -103,6 +103,14 @@ final class AppModel: ObservableObject {
             }
             .store(in: &cancellables)
 
+#if os(macOS)
+        updateService.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+#endif
+
         playback.$currentSong
             .combineLatest(playback.$queue, playback.$repeatMode)
             .sink { [weak self] _, _, _ in
