@@ -1,22 +1,14 @@
 {
   "fill" : {
-    "automatic-gradient" : "srgb:0.98039,0.14118,0.23529,1.00000"
+    "linear-gradient" : [
+      "display-p3:1.00000,0.43890,0.41534,1.00000",
+      "srgb:0.98039,0.14118,0.23529,1.00000"
+    ]
   },
   "groups" : [
     {
       "layers" : [
-        {
-          "hidden" : true,
-          "image-name" : "music.note.svg",
-          "name" : "music.note",
-          "position" : {
-            "scale" : 33,
-            "translation-in-points" : [
-              0,
-              0
-            ]
-          }
-        }
+
       ],
       "shadow" : {
         "kind" : "neutral",
@@ -30,13 +22,26 @@
     {
       "layers" : [
         {
+          "hidden" : false,
+          "image-name" : "scribble.variable.svg",
+          "name" : "scribble.variable",
+          "position" : {
+            "scale" : 27,
+            "translation-in-points" : [
+              0.010728106951319205,
+              2.6309573765659025
+            ]
+          }
+        },
+        {
+          "hidden" : true,
           "image-name" : "scribble.svg",
           "name" : "scribble",
           "position" : {
-            "scale" : 33,
+            "scale" : 34,
             "translation-in-points" : [
-              2.4917744667618535e-07,
-              -28.771023939432325
+              2.5672829906397965e-07,
+              1.3425140991785156e-05
             ]
           }
         }
