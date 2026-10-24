@@ -46,7 +46,7 @@ signing_identities=$(security find-identity -v -p codesigning)
     exit 66
 }
 
-"$script_dir/set-version.sh" "$version" "$build"
+"$script_dir/set-version.sh" "$version" "$build" Yorune
 git add Yorune.xcodeproj/project.pbxproj
 if ! git diff --cached --quiet; then
     git commit -m "Release $tag"
