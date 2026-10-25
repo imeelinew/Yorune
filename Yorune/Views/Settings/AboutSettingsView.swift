@@ -54,9 +54,9 @@ struct AboutSettingsView: View {
 
             PreferencesDivider()
 
-            PreferencesRow(label: "Project", alignment: .top) {
-                Text("A focused macOS music player for Navidrome")
-                    .fixedSize(horizontal: false, vertical: true)
+            PreferencesRow(label: "Project") {
+                Link("GitHub Repository", destination: URL(string: "https://github.com/imeelinew/Yorune")!)
+                    .buttonStyle(.bordered)
             }
 
             PreferencesDivider()
