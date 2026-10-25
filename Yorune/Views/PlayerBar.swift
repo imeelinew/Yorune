@@ -14,7 +14,6 @@ struct PlayerBar: View {
 
     @State private var isSeeking = false
     @State private var pendingSeekTime = 0.0
-    @State private var isVolumeVisible = false
 
     init(
         playback: PlaybackController,
@@ -279,21 +278,8 @@ struct PlayerBar: View {
                     .contentTransition(.symbolEffect(.replace))
             }
 
-            PlayerBarIconButton(
-                action: {
-                    withAnimation(YoruneStyle.quickAnimation) {
-                        isVolumeVisible.toggle()
-                    }
-                },
-                accessibilityLabel: "Volume"
-            ) {
-                Image(systemName: volumeSymbol)
-                    .font(.system(size: 15))
-                    .contentTransition(.symbolEffect(.replace))
-            }
-            .popover(isPresented: $isVolumeVisible, arrowEdge: .bottom) {
-                PlayerVolumePopover(playback: playback)
-            }
+            PlayerVolumeControl(playback: playback)
+                .frame(width: 110)
         }
     }
 
@@ -319,19 +305,6 @@ struct PlayerBar: View {
 
     private var displayedElapsedTime: Double {
         isSeeking ? pendingSeekTime : playback.elapsedTime
-    }
-
-    private var volumeSymbol: String {
-        switch playback.volume {
-        case 0:
-            "speaker.slash.fill"
-        case ..<0.34:
-            "speaker.wave.1.fill"
-        case ..<0.67:
-            "speaker.wave.2.fill"
-        default:
-            "speaker.wave.3.fill"
-        }
     }
 
     private var repeatSymbol: String {
@@ -685,13 +658,16 @@ private struct PlayerBarIconButtonStyle: ButtonStyle {
     }
 }
 
-private struct PlayerVolumePopover: View {
+private struct PlayerVolumeControl: View {
     @ObservedObject var playback: PlaybackController
 
     var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "speaker.fill")
+        HStack(spacing: 6) {
+            Image(systemName: volumeSymbol)
+                .font(.system(size: 13))
                 .foregroundStyle(.secondary)
+                .frame(width: 18)
+                .accessibilityHidden(true)
 
 #if os(iOS)
             IOSSystemVolumeSlider(tint: .label)
@@ -708,12 +684,26 @@ private struct PlayerVolumePopover: View {
             .accessibilityLabel("Volume")
 #endif
 
-            Image(systemName: "speaker.wave.3.fill")
-                .foregroundStyle(.secondary)
         }
         .controlSize(.small)
-        .padding(12)
-        .frame(width: 220)
+        .frame(height: 28)
+    }
+
+    private var volumeSymbol: String {
+#if os(iOS)
+        "speaker.wave.3.fill"
+#else
+        switch playback.volume {
+        case 0:
+            "speaker.slash.fill"
+        case ..<0.34:
+            "speaker.wave.1.fill"
+        case ..<0.67:
+            "speaker.wave.2.fill"
+        default:
+            "speaker.wave.3.fill"
+        }
+#endif
     }
 }
 

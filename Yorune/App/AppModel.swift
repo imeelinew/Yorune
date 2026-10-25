@@ -205,23 +205,13 @@ final class PlaybackController: ObservableObject {
         static let recentAlbumPlays = "playback.recentAlbumPlays"
     }
 
-    private enum VolumeCurve {
-        static let minimumDecibels = -60.0
-
-        static func gain(for level: Double) -> Float {
-            guard level > 0 else { return 0 }
-            let decibels = minimumDecibels * (1 - min(level, 1))
-            return Float(pow(10, decibels / 20))
-        }
-    }
-
-    /// macOS 使用应用内音量并套用听感曲线；iOS 交给系统音量控制，播放器保持满增益。
+    /// macOS 直接使用应用内音量；iOS 交给系统音量控制，播放器保持满增益。
     private var playerGain: Float {
         if isMutedForUITesting { return 0 }
 #if os(iOS)
         return 1
 #else
-        return VolumeCurve.gain(for: volume)
+        return Float(volume)
 #endif
     }
 
