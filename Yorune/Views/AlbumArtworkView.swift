@@ -36,15 +36,15 @@ struct AlbumArtworkView: View {
     }
 
     var body: some View {
-        // The container owns layout; the image must not enlarge it when
-        // scaledToFill produces an overflow for portrait or landscape covers.
+        // Keep the complete cover visible at its original aspect ratio,
+        // while the container owns the layout size.
         Rectangle()
             .fill(.quaternary)
             .overlay {
                 if let image {
                     swiftUIImage(image)
                         .resizable()
-                        .scaledToFill()
+                        .scaledToFit()
                 } else {
                     Image(systemName: "music.note")
                         .font(.largeTitle)
