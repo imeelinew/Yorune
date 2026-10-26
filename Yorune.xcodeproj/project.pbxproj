@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		10000000000000000000003C /* AlbumPageNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000003C /* AlbumPageNavigation.swift */; };
-		10000000000000000000003B /* AlbumNavigationEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000003B /* AlbumNavigationEffects.swift */; };
 		100000000000000000000001 /* YoruneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000001 /* YoruneApp.swift */; };
 		100000000000000000000002 /* Album.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000002 /* Album.swift */; };
 		100000000000000000000003 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000003 /* ContentView.swift */; };
@@ -74,8 +72,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		20000000000000000000003C /* AlbumPageNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumPageNavigation.swift; sourceTree = "<group>"; };
-		20000000000000000000003B /* AlbumNavigationEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumNavigationEffects.swift; sourceTree = "<group>"; };
 		200000000000000000000001 /* YoruneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YoruneApp.swift; sourceTree = "<group>"; };
 		200000000000000000000002 /* Album.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Album.swift; sourceTree = "<group>"; };
 		200000000000000000000003 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -196,8 +192,6 @@
 				200000000000000000000003 /* ContentView.swift */,
 				200000000000000000000004 /* SidebarView.swift */,
 				200000000000000000000005 /* AlbumGridView.swift */,
-				20000000000000000000003C /* AlbumPageNavigation.swift */,
-				20000000000000000000003B /* AlbumNavigationEffects.swift */,
 				200000000000000000000006 /* AlbumCardView.swift */,
 				20000000000000000000000E /* AlbumArtworkView.swift */,
 				20000000000000000000001F /* PlayerBar.swift */,
@@ -432,8 +426,6 @@
 				100000000000000000000003 /* ContentView.swift in Sources */,
 				100000000000000000000004 /* SidebarView.swift in Sources */,
 				100000000000000000000005 /* AlbumGridView.swift in Sources */,
-				10000000000000000000003C /* AlbumPageNavigation.swift in Sources */,
-				10000000000000000000003B /* AlbumNavigationEffects.swift in Sources */,
 				100000000000000000000006 /* AlbumCardView.swift in Sources */,
 				100000000000000000000007 /* AppModel.swift in Sources */,
 				100000000000000000000008 /* ServerConfiguration.swift in Sources */,

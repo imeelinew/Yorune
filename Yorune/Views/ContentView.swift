@@ -81,25 +81,30 @@ private struct LibraryDetailView: View {
     var body: some View {
         NavigationStack {
             GeometryReader { geometry in
-                AlbumPageNavigation(album: $selectedAlbum) {
+                ZStack {
                     libraryContent
-                } detail: { album in
-                    AlbumDetailView(
-                        album: album,
-                        downloads: downloads,
-                        playback: playback,
-                        initialSongs: selection == .downloads
-                            ? downloads.offlineSongs(in: album.id)
-                            : library.cachedSongs(in: album),
-                        songLoader: { album in
-                            if selection == .downloads {
-                                return downloads.offlineSongs(in: album.id)
-                            }
-                            return try await library.fetchSongs(in: album)
-                        },
-                        isOfflineLibrary: selection == .downloads,
-                        backgroundTopInset: geometry.safeAreaInsets.top
-                    )
+                        .opacity(selectedAlbum == nil ? 1 : 0)
+                        .allowsHitTesting(selectedAlbum == nil)
+                        .accessibilityHidden(selectedAlbum != nil)
+
+                    if let album = selectedAlbum {
+                        AlbumDetailView(
+                            album: album,
+                            downloads: downloads,
+                            playback: playback,
+                            initialSongs: selection == .downloads
+                                ? downloads.offlineSongs(in: album.id)
+                                : library.cachedSongs(in: album),
+                            songLoader: { album in
+                                if selection == .downloads {
+                                    return downloads.offlineSongs(in: album.id)
+                                }
+                                return try await library.fetchSongs(in: album)
+                            },
+                            isOfflineLibrary: selection == .downloads,
+                            backgroundTopInset: geometry.safeAreaInsets.top
+                        )
+                    }
                 }
                 .id(selection)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

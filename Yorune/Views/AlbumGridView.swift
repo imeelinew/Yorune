@@ -340,7 +340,7 @@ struct AlbumDetailView: View {
         trackContent
             .background {
                 GeometryReader { geometry in
-                    // The AppKit page starts below the toolbar. Match the
+                    // The detail content starts below the toolbar. Match the
                     // window backdrop's origin so both gradients join seamlessly.
                     AlbumDetailBackground(url: album.artworkURL)
                         .frame(height: geometry.size.height + backgroundTopInset)
@@ -424,7 +424,6 @@ struct AlbumDetailView: View {
                                 }
                             }
                         }
-                        .modifier(AlbumDetailEntrance(delay: 0.1))
                     }
                     .padding(.vertical, 24)
                 }
@@ -449,7 +448,6 @@ struct AlbumDetailView: View {
         return HStack(alignment: .top, spacing: 20) {
             AlbumArtworkView(url: album.artworkURL, cornerRadius: 8)
                 .frame(width: 180, height: 180)
-                .modifier(AlbumDetailEntrance(isArtwork: true))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Album")
@@ -479,7 +477,6 @@ struct AlbumDetailView: View {
                 headerButtons(songs)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .modifier(AlbumDetailEntrance(delay: 0.05))
         }
     }
 

@@ -36,25 +36,26 @@ struct AlbumArtworkView: View {
     }
 
     var body: some View {
-        ZStack {
-            Rectangle()
-                .fill(.quaternary)
-
-            if let image {
-                swiftUIImage(image)
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                Image(systemName: "music.note")
-                    .font(.largeTitle)
-                    .foregroundStyle(.secondary)
+        // The container owns layout; the image must not enlarge it when
+        // scaledToFill produces an overflow for portrait or landscape covers.
+        Rectangle()
+            .fill(.quaternary)
+            .overlay {
+                if let image {
+                    swiftUIImage(image)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Image(systemName: "music.note")
+                        .font(.largeTitle)
+                        .foregroundStyle(.secondary)
+                }
             }
-        }
-        .clipped()
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-        .task(id: cacheKey) {
-            await loadImage()
-        }
+            .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+            .task(id: cacheKey) {
+                await loadImage()
+            }
     }
 
     private func loadImage() async {
