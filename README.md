@@ -5,18 +5,13 @@
 <h1 align="center">Yorune</h1>
 
 <p align="center">
-  专为 Navidrome 打造的原生 Apple 平台音乐客户端<br>
-  支持 macOS、iPhone 与 iPad
+  A native Apple-platform music client built for Navidrome<br>
+  Available for macOS, iPhone, and iPad
 </p>
 
 <p align="center">
-  <a href="#连接-navidrome">连接 Navidrome</a> ·
-  <a href="#从源码构建">从源码构建</a>
-</p>
-
-<p align="center">
-  <a href="README.md">简体中文</a>
-  <a href="README.en.md">English</a>
+  <a href="#connect-to-navidrome">Connect to Navidrome</a> ·
+  <a href="#build-from-source">Build from source</a>
 </p>
 
 <p align="center">
@@ -30,47 +25,47 @@
 ---
 
 <p align="center">
-  <img alt="Yorune 音乐客户端" src=".github/assets/app.png" width="860">
+  <img alt="Yorune music client" src=".github/assets/app.png" width="860">
 </p>
 
-## 简介
+## About
 
-Yorune 是一款为 Navidrome 自托管音乐库设计的原生 Apple 平台客户端。它直接通过 Subsonic API 读取专辑、曲目和封面，并以 SwiftUI、AppKit、UIKit 与 AVFoundation 构建系统原生播放体验。
+Yorune is a native Apple-platform client for self-hosted Navidrome libraries. It reads albums, tracks, and artwork through the Subsonic API, then builds a system-native playback experience with SwiftUI, AppKit, UIKit, and AVFoundation.
 
-应用以专辑为核心组织音乐库：打开后可以搜索和浏览专辑，进入详情查看曲目并开始播放；底部播放栏负责进度、音量和播放模式，右侧队列则用于查看和整理接下来播放的内容。
+The library is organized around albums. Search or browse the collection, open an album to inspect its tracks, and start playback directly from the detail view. A bottom player handles progress, volume, and playback modes, while a side panel exposes the active queue.
 
-## 为什么开发 Yorune
+## Why Yorune
 
-Navidrome 提供稳定的自托管音乐服务，但浏览器播放器很难完全融入 macOS。Yorune 将远端音乐库重新做成一个原生桌面应用，让窗口、快捷键、系统音频路由与设置都遵循 Mac 的使用方式。
+Navidrome is an excellent self-hosted music server, but a browser player never feels completely at home on macOS. Yorune turns the remote library into a native desktop app with Mac-style windows, keyboard interaction, system audio routing, and settings.
 
-- **原生界面**：SwiftUI 导航、专辑网格与 macOS 26 Liquid Glass 播放栏
-- **完整播放控制**：播放、暂停、上一首、下一首、进度拖动与音量控制
-- **播放模式**：随机播放、列表循环与单曲循环
-- **队列管理**：查看、跳转、移除和重新组织当前播放队列
-- **系统音频能力**：支持 AirPlay 输出与键盘空格播放 / 暂停
-- **本地连接信息**：服务器地址、用户名和密码保存在应用本机设置中
+- **Native interface**: SwiftUI navigation, album grids, and a macOS 26 Liquid Glass player bar
+- **Complete controls**: play, pause, previous, next, seeking, and volume
+- **Playback modes**: shuffle, repeat all, and repeat one
+- **Queue management**: inspect, jump to, remove, and reorganize queued tracks
+- **System audio**: AirPlay routing and Space-bar play/pause
+- **Local credentials**: server address, username, and password are stored in local app settings
 
-## 音乐库与播放
+## Library and Playback
 
-Yorune 分页读取 Navidrome 专辑数据，按需加载专辑曲目，并缓存当前会话中已请求的曲目列表。封面与音频流都由服务器直接提供，不需要预先同步整套音乐库。
+Yorune pages through the Navidrome album library, loads tracks on demand, and caches requested album tracks for the current session. Artwork and audio stream directly from the server, so the entire library does not need to be synchronized first.
 
-播放界面支持专辑搜索、曲目时长、实时进度、缓冲状态、音量、随机与循环模式。播放队列可以在独立面板中展开，当前曲目、待播内容和播放顺序保持同步。
+The player supports album search, track duration, live progress, buffering state, volume, shuffle, and repeat. The queue panel keeps the current track, upcoming items, and playback order in sync.
 
-## 其他功能
+## More Features
 
-- 跟随系统、浅色与深色三种外观
-- 简体中文与英文界面
-- 登录时启动
-- 连接失败与播放失败后的重试流程
-- 使用临时 `URLSession` 访问服务器，不持久化网络缓存与 Cookie
+- System, light, and dark appearances
+- Simplified Chinese and English interfaces
+- Launch at login
+- Retry flows for connection and playback failures
+- Ephemeral `URLSession` networking without persistent caches or cookies
 
-## 连接 Navidrome
+## Connect to Navidrome
 
-打开 **设置 → 服务器**，填写 Navidrome 地址、用户名和密码，然后选择 **保存并连接**。服务器需要能够通过当前网络访问，并提供兼容的 Subsonic API。
+Open **Settings → Server**, enter the Navidrome URL, username, and password, then choose **Save and Connect**. The server must be reachable from the current network and expose a compatible Subsonic API.
 
-## 从源码构建
+## Build from Source
 
-需要 Xcode 27 或更新版本。macOS target 支持 macOS 15 或更高版本，iOS target 支持 iOS 与 iPadOS 26 或更高版本。
+You need Xcode 27 or later. The macOS target supports macOS 15 or later, and the iOS target supports iOS and iPadOS 26 or later.
 
 ```bash
 git clone https://github.com/imeelinew/Yorune.git
@@ -78,9 +73,9 @@ cd Yorune
 open Yorune.xcodeproj
 ```
 
-在 Xcode 中选择 **Yorune** scheme，然后执行 **Product → Run**。
+Select the **Yorune** scheme, then choose **Product → Run**.
 
-## 许可证
+## License
 
-Yorune 以 [MIT License](LICENSE) 开源。
-在 Xcode 中选择 **Yorune** scheme 构建 macOS 版本，或选择 **Yorune iOS** scheme 构建 iPhone 与 iPad 版本。
+Yorune is released under the [MIT License](LICENSE).
+Select the **Yorune** scheme for macOS or the **Yorune iOS** scheme for iPhone and iPad.
