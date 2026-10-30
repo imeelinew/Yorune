@@ -38,21 +38,23 @@ struct AlbumArtworkView: View {
     var body: some View {
         // Keep the complete cover visible at its original aspect ratio,
         // while the container owns the layout size.
-        Rectangle()
-            .fill(.quaternary)
+        Color.clear
             .overlay {
                 if let image {
                     swiftUIImage(image)
                         .resizable()
                         .scaledToFit()
+                        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
                 } else {
-                    Image(systemName: "music.note")
-                        .font(.largeTitle)
-                        .foregroundStyle(.secondary)
+                    RoundedRectangle(cornerRadius: cornerRadius)
+                        .fill(.quaternary)
+                        .overlay {
+                            Image(systemName: "music.note")
+                                .font(.largeTitle)
+                                .foregroundStyle(.secondary)
+                        }
                 }
             }
-            .clipped()
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
             .task(id: cacheKey) {
                 await loadImage()
             }
