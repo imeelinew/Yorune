@@ -62,10 +62,13 @@ private struct PlaybackQueueHost: View {
                     .padding(.top, 12)
                     .padding(.trailing, 16)
                     .padding(.bottom, 76)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                    .transition(
+                        .move(edge: .trailing)
+                            .combined(with: .scale(scale: 0.9, anchor: .bottomTrailing))
+                    )
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: playback.isQueuePresented)
+        .animation(.spring(response: 0.36, dampingFraction: 0.78), value: playback.isQueuePresented)
     }
 }
 
@@ -300,63 +303,51 @@ private struct PlaybackQueuePanel: View {
     @State private var isEditing = false
 
     var body: some View {
-        Group {
-            if isEditing {
-                editingPanel
-            } else {
-                compactPanel
-            }
-        }
-        .animation(YoruneStyle.quickAnimation, value: isEditing)
+        panelSurface
+            .animation(.spring(response: 0.34, dampingFraction: 0.8), value: isEditing)
     }
 
     @ViewBuilder
-    private var compactPanel: some View {
-        if #available(macOS 26.0, *) {
-            compactContent
+    private var panelSurface: some View {
+        if #available(macOS 26.0, *), !isEditing {
+            panelBody
                 .glassEffect(
                     .regular.interactive(),
                     in: RoundedRectangle(cornerRadius: 20, style: .continuous)
                 )
         } else {
-            compactContent
+            panelBody
                 .background(
-                    .ultraThinMaterial,
+                    isEditing ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.ultraThinMaterial),
                     in: RoundedRectangle(cornerRadius: 20, style: .continuous)
                 )
         }
     }
 
-    private var compactContent: some View {
+    private var panelBody: some View {
         VStack(spacing: 0) {
-            compactHeader
+            if isEditing {
+                editingHeader
+            } else {
+                compactHeader
+            }
 
             Divider()
                 .opacity(0.3)
 
-            queueContent(isEditing: false)
+            queueContent(isEditing: isEditing)
+
+            if isEditing {
+                Divider()
+                    .opacity(0.3)
+                    .transition(.move(edge: .bottom))
+
+                queueFooter
+                    .transition(.move(edge: .bottom).combined(with: .scale(scale: 0.95, anchor: .bottom)))
+            }
         }
-        .frame(width: 280)
+        .frame(width: isEditing ? 400 : 280)
         .frame(maxHeight: .infinity)
-    }
-
-    private var editingPanel: some View {
-        VStack(spacing: 0) {
-            editingHeader
-
-            Divider()
-                .opacity(0.3)
-
-            queueContent(isEditing: true)
-
-            Divider()
-                .opacity(0.3)
-
-            queueFooter
-        }
-        .frame(width: 400)
-        .frame(maxHeight: .infinity)
-        .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 

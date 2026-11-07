@@ -183,16 +183,19 @@ struct IOSAlbumDetailView: View {
                 downloads.download(pendingSongs)
             }
         } label: {
-            if anyDownloading {
-                ProgressView()
-                    .controlSize(.small)
-            } else if allDownloaded || isOfflineLibrary {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 16, weight: .semibold))
-            } else {
-                Image(systemName: "arrow.down")
-                    .font(.system(size: 16, weight: .semibold))
+            ZStack {
+                if anyDownloading {
+                    ProgressView()
+                        .controlSize(.small)
+                        .transition(.scale(scale: 0.5))
+                } else {
+                    Image(systemName: allDownloaded || isOfflineLibrary ? "checkmark" : "arrow.down")
+                        .font(.system(size: 16, weight: .semibold))
+                        .contentTransition(.symbolEffect(.replace))
+                        .transition(.scale(scale: 0.5))
+                }
             }
+            .animation(.spring(response: 0.3, dampingFraction: 0.72), value: anyDownloading)
         }
         .buttonStyle(IOSAlbumActionButtonStyle(shape: .circle))
         .disabled(songs.isEmpty || (anyDownloading && pendingSongs.isEmpty))
@@ -212,13 +215,17 @@ struct IOSAlbumDetailView: View {
 
     private func trackList(_ songs: [Song]) -> some View {
         let artist = albumArtist(songs)
+        let currentSongID = playback.currentSong?.id
         return LazyVStack(spacing: 0) {
             ForEach(Array(songs.enumerated()), id: \.element.id) { index, song in
+                let isCurrent = currentSongID == song.id
+                let nextIsCurrent = index + 1 < songs.count && songs[index + 1].id == currentSongID
+
                 IOSSongRow(
                     song: song,
                     index: index,
                     showsArtist: !song.artist.isEmpty && song.artist != artist,
-                    isCurrent: playback.currentSong?.id == song.id,
+                    isCurrent: isCurrent,
                     isPlaying: playback.isPlaying,
                     isDownloaded: downloads.isDownloaded(song.id),
                     isDownloading: downloads.isDownloading(song.id),
@@ -232,11 +239,13 @@ struct IOSAlbumDetailView: View {
 
                 if index < songs.count - 1 {
                     Divider()
-                        .padding(.leading, 56)
+                        .padding(.leading, 46)
+                        .padding(.trailing, 10)
+                        .opacity(isCurrent || nextIsCurrent ? 0 : 1)
                 }
             }
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 10)
     }
 
     @ViewBuilder
@@ -316,9 +325,21 @@ private struct IOSSongRow<Actions: View>: View {
     let play: () -> Void
     @ViewBuilder let actions: () -> Actions
 
+    @State private var isPressed = false
+    @State private var isTapHighlighted = false
+    @State private var tapFeedbackCount = 0
+    @State private var highlightTask: Task<Void, Never>?
+
+    private var isHighlighted: Bool {
+        isPressed || isTapHighlighted
+    }
+
     var body: some View {
         HStack(spacing: 0) {
-            Button(action: play) {
+            Button {
+                triggerTapHighlight()
+                play()
+            } label: {
                 HStack(spacing: 12) {
                     Group {
                         if isCurrent {
@@ -326,18 +347,21 @@ private struct IOSSongRow<Actions: View>: View {
                                 .font(.system(size: 15, weight: .medium))
                                 .foregroundStyle(YoruneStyle.accent)
                                 .symbolEffect(.variableColor.iterative, isActive: isPlaying)
+                                .transition(.scale(scale: 0.5))
                         } else {
                             Text(song.position.isEmpty ? "\(index + 1)" : song.position)
                                 .font(.body)
                                 .foregroundStyle(.secondary)
                                 .monospacedDigit()
+                                .transition(.scale(scale: 0.5))
                         }
                     }
                     .frame(width: 24, alignment: .center)
+                    .animation(.spring(response: 0.28, dampingFraction: 0.72), value: isCurrent)
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(song.title)
-                            .font(.body)
+                            .font(.body.weight(isCurrent ? .medium : .regular))
                             .foregroundStyle(isCurrent ? YoruneStyle.accent : .primary)
                             .lineLimit(1)
 
@@ -361,9 +385,10 @@ private struct IOSSongRow<Actions: View>: View {
                     }
                 }
                 .padding(.vertical, 13)
+                .padding(.leading, 10)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(IOSSongRowPressTrackerStyle(isPressed: $isPressed))
 
             Menu {
                 actions()
@@ -374,11 +399,64 @@ private struct IOSSongRow<Actions: View>: View {
                     .frame(width: 36, height: 44)
                     .contentShape(Rectangle())
             }
+            .padding(.trailing, 4)
             .accessibilityLabel("More")
         }
+        .background {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(rowBackgroundColor)
+        }
+        .scaleEffect(isHighlighted ? 0.985 : 1)
+        .animation(.spring(response: 0.24, dampingFraction: 0.76), value: isHighlighted)
+        .animation(.spring(response: 0.3, dampingFraction: 0.82), value: isCurrent)
+        .sensoryFeedback(.selection, trigger: tapFeedbackCount)
         .contextMenu {
             actions()
         }
+        .onDisappear {
+            highlightTask?.cancel()
+            highlightTask = nil
+            isTapHighlighted = false
+            isPressed = false
+        }
+    }
+
+    private var rowBackgroundColor: Color {
+        if isHighlighted {
+            return Color(uiColor: .secondarySystemFill)
+        }
+        if isCurrent {
+            return Color(uiColor: .tertiarySystemFill).opacity(0.75)
+        }
+        return .clear
+    }
+
+    private func triggerTapHighlight() {
+        tapFeedbackCount &+= 1
+        highlightTask?.cancel()
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            isTapHighlighted = true
+        }
+        highlightTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(180))
+            guard !Task.isCancelled else { return }
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                isTapHighlighted = false
+            }
+        }
+    }
+}
+
+private struct IOSSongRowPressTrackerStyle: ButtonStyle {
+    @Binding var isPressed: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .onChange(of: configuration.isPressed) { _, pressed in
+                isPressed = pressed
+            }
     }
 }
 
@@ -406,8 +484,8 @@ private struct IOSAlbumActionButtonStyle: ButtonStyle {
                 }
             }
             .contentShape(shape == .circle ? AnyShape(Circle()) : AnyShape(Capsule()))
-            .opacity(isEnabled ? (configuration.isPressed ? 0.6 : 1) : 0.4)
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(YoruneStyle.quickAnimation, value: configuration.isPressed)
+            .opacity(isEnabled ? 1 : 0.4)
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .animation(.spring(response: 0.24, dampingFraction: 0.68), value: configuration.isPressed)
     }
 }

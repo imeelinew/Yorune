@@ -72,7 +72,7 @@ struct AlbumGridView: View {
                 }
             }
             .animation(
-                .easeInOut(duration: 0.18),
+                .spring(response: 0.34, dampingFraction: 0.76),
                 value: library.isSyncing || refreshRequested || pullDistance > 0
             )
         }
@@ -117,14 +117,14 @@ struct AlbumGridView: View {
                 .glassEffect(.regular, in: Capsule())
                 .shadow(color: .black.opacity(0.16), radius: 18, y: 8)
                 .padding(.top, 12)
-                .transition(.blurReplace)
+                .transition(.move(edge: .top).combined(with: .scale(scale: 0.82, anchor: .top)))
                 .allowsHitTesting(false)
         } else {
             indicator
                 .background(.ultraThinMaterial, in: Capsule())
                 .shadow(color: .black.opacity(0.16), radius: 18, y: 8)
                 .padding(.top, 12)
-                .transition(.opacity)
+                .transition(.move(edge: .top).combined(with: .scale(scale: 0.82, anchor: .top)))
                 .allowsHitTesting(false)
         }
     }

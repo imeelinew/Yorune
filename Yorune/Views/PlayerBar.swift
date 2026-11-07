@@ -652,9 +652,8 @@ private struct PlayerBarIconButton<Icon: View>: View {
 private struct PlayerBarIconButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.92 : 1)
-            .opacity(configuration.isPressed ? 0.72 : 1)
-            .animation(YoruneStyle.quickAnimation, value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.88 : 1)
+            .animation(.spring(response: 0.24, dampingFraction: 0.68), value: configuration.isPressed)
     }
 }
 
@@ -670,7 +669,7 @@ private struct PlayerVolumeControl: View {
                 .accessibilityHidden(true)
 
 #if os(iOS)
-            IOSSystemVolumeSlider(tint: .label)
+            IOSSystemVolumeSlider(tint: .primary)
                 .frame(height: 24)
                 .accessibilityLabel("Volume")
 #else
