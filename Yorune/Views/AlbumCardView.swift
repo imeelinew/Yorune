@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AlbumCardView: View {
     let album: Album
+    var onArtworkFrameChange: ((CGRect) -> Void)? = nil
     @Environment(\.colorScheme) private var colorScheme
     @State private var isHovering = false
 
@@ -9,6 +10,11 @@ struct AlbumCardView: View {
         VStack(alignment: .leading, spacing: 9) {
             AlbumArtworkView(url: album.artworkURL, cornerRadius: 10)
                 .aspectRatio(1, contentMode: .fit)
+                .onGeometryChange(for: CGRect.self) { proxy in
+                    proxy.frame(in: .named("libraryDetailSpace"))
+                } action: { newFrame in
+                    onArtworkFrameChange?(newFrame)
+                }
                 .shadow(
                     color: .black.opacity(
                         colorScheme == .dark

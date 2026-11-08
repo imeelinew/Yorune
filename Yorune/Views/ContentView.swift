@@ -79,6 +79,9 @@ private struct LibraryDetailView: View {
     let selection: LibrarySection?
     let openSettings: () -> Void
     @State private var selectedAlbum: Album?
+    @State private var isAlbumExpanded = false
+    @State private var transitionSourceRect: CGRect?
+    @State private var closeTask: Task<Void, Never>?
     @State private var searchText = ""
 
     var body: some View {
@@ -86,27 +89,34 @@ private struct LibraryDetailView: View {
             GeometryReader { geometry in
                 ZStack {
                     libraryContent
-                        .opacity(selectedAlbum == nil ? 1 : 0)
+                        .scaleEffect(isAlbumExpanded && selectedAlbum != nil ? 0.96 : 1)
+                        .blur(radius: isAlbumExpanded && selectedAlbum != nil ? 8 : 0)
+                        .opacity(isAlbumExpanded && selectedAlbum != nil ? 0 : 1)
                         .allowsHitTesting(selectedAlbum == nil)
                         .accessibilityHidden(selectedAlbum != nil)
 
                     if let album = selectedAlbum {
+                        let useOfflineSongs = selection == .downloads
+                            && downloads.offlineAlbums.contains(where: { $0.id == album.id })
                         AlbumDetailView(
                             album: album,
                             downloads: downloads,
                             playback: playback,
-                            initialSongs: selection == .downloads
+                            initialSongs: useOfflineSongs
                                 ? downloads.offlineSongs(in: album.id)
                                 : library.cachedSongs(in: album),
                             songLoader: { album in
-                                if selection == .downloads {
+                                if useOfflineSongs {
                                     return downloads.offlineSongs(in: album.id)
                                 }
                                 return try await library.fetchSongs(in: album)
                             },
-                            isOfflineLibrary: selection == .downloads,
-                            backgroundTopInset: geometry.safeAreaInsets.top
+                            isOfflineLibrary: useOfflineSongs,
+                            backgroundTopInset: geometry.safeAreaInsets.top,
+                            sourceArtworkRect: transitionSourceRect,
+                            isExpanded: isAlbumExpanded
                         )
+                        .id(album.id)
                     }
                 }
                 .id(selection)
@@ -117,17 +127,21 @@ private struct LibraryDetailView: View {
                 ArtworkTintBackground {
                     if let selectedAlbum {
                         AlbumArtworkView(url: selectedAlbum.artworkURL, cornerRadius: 0)
+                            .opacity(isAlbumExpanded ? 1 : 0)
                     }
                 }
                 .ignoresSafeArea()
             }
-            .navigationTitle(selectedAlbum?.title ?? String(localized: selection == .downloads ? "Downloaded" : "Albums"))
+            .navigationTitle(
+                (isAlbumExpanded ? selectedAlbum?.title : nil)
+                    ?? String(localized: selection == .downloads ? "Downloaded" : "Albums")
+            )
             .toolbarBackgroundVisibility(.hidden, for: .automatic)
             .searchable(text: $searchText, placement: .toolbar, prompt: Text("Search Albums"))
             .toolbar {
                 if selectedAlbum != nil {
                     ToolbarItem(placement: .navigation) {
-                        Button { selectedAlbum = nil } label: {
+                        Button(action: closeAlbum) {
                             Label("Back", systemImage: "chevron.backward")
                         }
                         .keyboardShortcut("[", modifiers: .command)
@@ -137,12 +151,19 @@ private struct LibraryDetailView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onChange(of: selection) { _, _ in
+            closeTask?.cancel()
+            closeTask = nil
             selectedAlbum = nil
+            isAlbumExpanded = false
+            transitionSourceRect = nil
             searchText = ""
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            PlaybackBarInset(playback: playback)
+            PlaybackBarInset(playback: playback) { sourceRect in
+                openCurrentPlayingAlbum(sourceRect: sourceRect)
+            }
         }
+        .coordinateSpace(name: "libraryDetailSpace")
         .alert("Unable to Play", isPresented: failurePresented) {
             Button("Retry") {
                 playback.retryPlayback()
@@ -170,7 +191,9 @@ private struct LibraryDetailView: View {
                     downloads: downloads,
                     playback: playback,
                     searchText: $searchText,
-                    openAlbum: { selectedAlbum = $0 }
+                    openAlbum: { album, rect in
+                        openAlbum(album, sourceRect: rect)
+                    }
                 )
             default:
                 AlbumGridView(
@@ -179,11 +202,64 @@ private struct LibraryDetailView: View {
                     playback: playback,
                     openSettings: openSettings,
                     searchText: $searchText,
-                    openAlbum: { selectedAlbum = $0 }
+                    openAlbum: { album, rect in
+                        openAlbum(album, sourceRect: rect)
+                    }
                 )
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func openAlbum(_ album: Album, sourceRect: CGRect?) {
+        closeTask?.cancel()
+        closeTask = nil
+
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            transitionSourceRect = sourceRect
+            selectedAlbum = album
+            isAlbumExpanded = false
+        }
+
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.84)) {
+            isAlbumExpanded = true
+        }
+    }
+
+    private func closeAlbum() {
+        closeTask?.cancel()
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+            isAlbumExpanded = false
+        }
+        closeTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(240))
+            guard !Task.isCancelled, !isAlbumExpanded else { return }
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                selectedAlbum = nil
+                transitionSourceRect = nil
+            }
+        }
+    }
+
+    private func openCurrentPlayingAlbum(sourceRect: CGRect?) {
+        guard let song = playback.currentSong else { return }
+        if selectedAlbum?.id == song.albumID, isAlbumExpanded {
+            return
+        }
+        let resolvedAlbum = library.albums.first(where: { $0.id == song.albumID })
+            ?? downloads.offlineAlbums.first(where: { $0.id == song.albumID })
+            ?? Album(
+                id: song.albumID,
+                title: song.albumTitle,
+                artist: song.artist,
+                artworkURL: song.artworkURL,
+                lastPlayed: nil
+            )
+        openAlbum(resolvedAlbum, sourceRect: sourceRect)
     }
 
     private var failurePresented: Binding<Bool> {
@@ -211,11 +287,15 @@ private struct LibraryDetailView: View {
 
 private struct PlaybackBarInset: View {
     @ObservedObject var playback: PlaybackController
+    let openAlbumFromBar: (CGRect?) -> Void
 
     @ViewBuilder
     var body: some View {
         if playback.currentSong != nil {
-            PlayerBar(playback: playback)
+            PlayerBar(
+                playback: playback,
+                openNowPlayingWithFrame: openAlbumFromBar
+            )
         }
     }
 }
