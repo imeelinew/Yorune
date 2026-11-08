@@ -156,10 +156,6 @@ private struct IOSAlbumCard: View {
         VStack(alignment: .leading, spacing: 6) {
             AlbumArtworkView(url: album.artworkURL, cornerRadius: 8)
                 .aspectRatio(1, contentMode: .fit)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(.primary.opacity(0.08), lineWidth: 0.5)
-                }
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(album.title)

@@ -2,19 +2,30 @@ import SwiftUI
 
 struct AlbumCardView: View {
     let album: Album
+    @Environment(\.colorScheme) private var colorScheme
     @State private var isHovering = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            AlbumArtworkView(url: album.artworkURL)
+        VStack(alignment: .leading, spacing: 9) {
+            AlbumArtworkView(url: album.artworkURL, cornerRadius: 10)
                 .aspectRatio(1, contentMode: .fit)
-                .clipShape(.rect(cornerRadius: 8))
+                .shadow(
+                    color: .black.opacity(
+                        colorScheme == .dark
+                            ? (isHovering ? 0.42 : 0.26)
+                            : (isHovering ? 0.16 : 0.08)
+                    ),
+                    radius: isHovering ? 16 : 8,
+                    x: 0,
+                    y: isHovering ? 7 : 3
+                )
+                .scaleEffect(isHovering ? 1.014 : 1)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(album.title)
-                    .font(.system(size: 13, weight: .medium))
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
 
                 if !album.artist.isEmpty {
                     Text(album.artist)
@@ -23,19 +34,12 @@ struct AlbumCardView: View {
                         .lineLimit(1)
                 }
             }
+            .padding(.horizontal, 2)
         }
-        .scaleEffect(isHovering ? 1.02 : 1)
-        .shadow(
-            color: isHovering ? .black.opacity(0.15) : .clear,
-            radius: isHovering ? 12 : 0,
-            x: 0,
-            y: isHovering ? 4 : 0
-        )
-        .animation(YoruneStyle.springAnimation, value: isHovering)
+        .contentShape(Rectangle())
+        .animation(.easeOut(duration: 0.18), value: isHovering)
         .onHover { hovering in
-            withAnimation(YoruneStyle.quickAnimation) {
-                isHovering = hovering
-            }
+            isHovering = hovering
         }
     }
 }

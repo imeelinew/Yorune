@@ -41,9 +41,9 @@ struct PlayerBar: View {
                         .background(.ultraThinMaterial, in: Capsule())
                 }
             }
-            .frame(height: 52)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 8)
+            .frame(height: 56)
+            .padding(.horizontal, 18)
+            .padding(.bottom, 10)
             .background(alignment: .bottom) {
                 LinearGradient(
                     colors: [
@@ -53,8 +53,8 @@ struct PlayerBar: View {
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .frame(height: 44)
-                .padding(.bottom, -8)
+                .frame(height: 48)
+                .padding(.bottom, -10)
                 .allowsHitTesting(false)
             }
             .zIndex(2)
@@ -66,24 +66,26 @@ struct PlayerBar: View {
             if geometry.size.width <= 520, openNowPlaying != nil {
                 compactPlayerContent
             } else {
-                desktopPlayerContent(isCompact: geometry.size.width <= 700)
+                desktopPlayerContent(isCompact: geometry.size.width <= 720)
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 52)
+        .frame(height: usesSystemGlassContainer ? 52 : 56)
     }
 
     private func desktopPlayerContent(isCompact: Bool) -> some View {
-        HStack(spacing: 10) {
+        let sideWidth: CGFloat = isCompact ? 60 : 210
+        let rightWidth: CGFloat = isCompact ? 176 : 210
+
+        return HStack(spacing: 12) {
             songInfoSection(isCompact: isCompact)
-                .frame(width: isCompact ? 52 : 200, height: 52)
+                .frame(width: sideWidth, height: 56, alignment: .leading)
 
-            progressSection
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
+            centerPlaybackSection
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            playbackOptionsSection
-                .frame(width: 42, height: 52)
+            rightUtilitySection(isCompact: isCompact)
+                .frame(width: rightWidth, height: 56, alignment: .trailing)
         }
     }
 
@@ -166,35 +168,39 @@ struct PlayerBar: View {
     }
 
     private func songInfoContent(isCompact: Bool) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             AlbumArtworkView(
                 url: playback.currentSong?.artworkURL,
-                cornerRadius: 6
+                cornerRadius: 7
             )
-            .frame(width: 32, height: 32)
+            .frame(width: 36, height: 36)
+            .shadow(color: .black.opacity(0.14), radius: 4, x: 0, y: 2)
 
             if !isCompact {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(playback.currentSong?.title ?? "")
-                        .font(.system(size: 13))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.primary)
                         .lineLimit(1)
 
                     Text(playback.currentSong?.artist ?? "")
-                        .font(.system(size: 11))
+                        .font(.system(size: 11.5))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
-                .frame(width: 140, height: 29, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .padding(.leading, 14)
-        .padding(.vertical, 10)
+        .padding(.leading, 12)
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .contentShape(Rectangle())
     }
 
-    private var progressSection: some View {
-        ZStack(alignment: .top) {
+    private var centerPlaybackSection: some View {
+        VStack(spacing: 2) {
+            transportButtons
+
             PlayerProgressLane(
                 elapsedTime: displayedElapsedTime,
                 duration: playback.duration,
@@ -210,29 +216,22 @@ struct PlayerBar: View {
                     isSeeking = false
                 }
             )
-            .padding(.top, 18)
-            .zIndex(1)
-
-            progressActionButtons
-                .padding(.top, 2)
+            .frame(maxWidth: 460)
         }
+        .padding(.vertical, 4)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var progressActionButtons: some View {
-        HStack(spacing: 6) {
-            AirPlayRoutePicker()
-                .frame(width: 28, height: 28)
-                .disabled(playback.currentSong == nil)
-
+    private var transportButtons: some View {
+        HStack(spacing: 8) {
             PlayerBarIconButton(
                 action: playback.toggleShuffle,
                 isSelected: playback.isShuffling,
                 accessibilityLabel: "Shuffle"
             ) {
                 Image(systemName: "shuffle")
-                    .font(.system(size: 16))
-                    .foregroundStyle(playback.isShuffling ? YoruneStyle.accent : Color.primary)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(playback.isShuffling ? YoruneStyle.accent : Color.secondary)
             }
 
             PlayerBarIconButton(
@@ -249,7 +248,7 @@ struct PlayerBar: View {
                 accessibilityLabel: playback.isPlaying ? "Pause" : "Play"
             ) {
                 Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 20))
+                    .font(.system(size: 18))
                     .contentTransition(.symbolEffect(.replace))
             }
             .disabled(playback.currentSong == nil)
@@ -269,29 +268,33 @@ struct PlayerBar: View {
                 accessibilityLabel: "Repeat"
             ) {
                 Image(systemName: repeatSymbol)
-                    .font(.system(size: 16))
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(
                         playback.repeatMode == .off
-                            ? Color.primary
+                            ? Color.secondary
                             : YoruneStyle.accent
                     )
                     .contentTransition(.symbolEffect(.replace))
             }
-
-            PlayerVolumeControl(playback: playback)
-                .frame(width: 110)
         }
     }
 
-    private var playbackOptionsSection: some View {
-        HStack {
+    private func rightUtilitySection(isCompact: Bool) -> some View {
+        HStack(spacing: 6) {
+            PlayerVolumeControl(playback: playback)
+                .frame(width: isCompact ? 92 : 106)
+
+            AirPlayRoutePicker()
+                .frame(width: 28, height: 28)
+                .disabled(playback.currentSong == nil)
+
             PlayerBarIconButton(
                 action: playback.toggleQueueInspector,
                 isSelected: playback.isQueuePresented,
                 accessibilityLabel: "Queue"
             ) {
                 Image(systemName: "list.bullet")
-                    .font(.system(size: 16))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(
                         playback.isQueuePresented
                             ? YoruneStyle.accent
@@ -492,21 +495,24 @@ private struct PlayerProgressLane: View {
     }
 
     var body: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 8) {
-                Text(formatTime(elapsedTime))
-                Spacer(minLength: 8)
-                Text("-\(formatTime(max(0, duration - elapsedTime)))")
-            }
-            .font(.system(size: 11))
-            .foregroundStyle(.secondary)
-            .monospacedDigit()
-            .lineLimit(1)
-            .frame(height: 12)
+        HStack(spacing: 8) {
+            Text(formatTime(elapsedTime))
+                .font(.system(size: 10.5))
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+                .lineLimit(1)
+                .frame(width: 32, alignment: .trailing)
 
             progressBar
+
+            Text("-\(formatTime(max(0, duration - elapsedTime)))")
+                .font(.system(size: 10.5))
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+                .lineLimit(1)
+                .frame(width: 36, alignment: .leading)
         }
-        .frame(height: 30)
+        .frame(height: 16)
         .accessibilityElement()
         .accessibilityLabel(Text("Playback Position"))
         .accessibilityValue(
@@ -533,16 +539,17 @@ private struct PlayerProgressLane: View {
     private var progressBar: some View {
         GeometryReader { geometry in
             let width = geometry.size.width
-            let thumbSize: CGFloat = isDragging ? 14 : (isHovering ? 12 : 10)
+            let trackHeight: CGFloat = isDragging || isHovering ? 5 : 3.5
+            let thumbSize: CGFloat = isDragging ? 11 : (isHovering ? 9 : 0)
 
             ZStack(alignment: .leading) {
                 Capsule()
                     .fill(trackColor)
-                    .frame(height: 4)
+                    .frame(height: trackHeight)
 
                 Capsule()
                     .fill(isLoading ? Color.secondary : YoruneStyle.accent)
-                    .frame(width: width * fraction, height: 4)
+                    .frame(width: max(0, width * fraction), height: trackHeight)
 
                 Circle()
                     .fill(isLoading ? Color.secondary : YoruneStyle.accent)
@@ -553,10 +560,12 @@ private struct PlayerProgressLane: View {
                             max(0, width - thumbSize)
                         )
                     )
-                    .opacity(canSeek ? 1 : 0)
+                    .opacity(canSeek && thumbSize > 0 ? 1 : 0)
             }
             .frame(maxHeight: .infinity)
             .contentShape(Rectangle())
+            .animation(.easeOut(duration: 0.14), value: isHovering)
+            .animation(.easeOut(duration: 0.12), value: isDragging)
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
@@ -576,7 +585,7 @@ private struct PlayerProgressLane: View {
                 isHovering = hovering
             }
         }
-        .frame(height: 12)
+        .frame(height: 14)
     }
 
     private var trackColor: Color {
@@ -663,9 +672,9 @@ private struct PlayerVolumeControl: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: volumeSymbol)
-                .font(.system(size: 13))
+                .font(.system(size: 12))
                 .foregroundStyle(.secondary)
-                .frame(width: 18)
+                .frame(width: 16)
                 .accessibilityHidden(true)
 
 #if os(iOS)
@@ -673,12 +682,11 @@ private struct PlayerVolumeControl: View {
                 .frame(height: 24)
                 .accessibilityLabel("Volume")
 #else
-            Slider(
-                value: Binding(
+            MacVolumeSlider(
+                volume: Binding(
                     get: { playback.volume },
                     set: playback.setVolume
-                ),
-                in: 0 ... 1
+                )
             )
             .accessibilityLabel("Volume")
 #endif
@@ -707,9 +715,87 @@ private struct PlayerVolumeControl: View {
 }
 
 #if os(macOS)
+private struct MacVolumeSlider: View {
+    @Binding var volume: Double
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isHovering = false
+    @State private var isDragging = false
+
+    private var fraction: CGFloat {
+        CGFloat(min(max(volume, 0), 1))
+    }
+
+    var body: some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            let trackHeight: CGFloat = isHovering || isDragging ? 5 : 3.5
+            let thumbSize: CGFloat = isDragging ? 11 : (isHovering ? 9 : 0)
+
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(
+                        colorScheme == .dark
+                            ? Color.white.opacity(isHovering || isDragging ? 0.24 : 0.16)
+                            : Color.black.opacity(isHovering || isDragging ? 0.20 : 0.13)
+                    )
+                    .frame(height: trackHeight)
+
+                Capsule()
+                    .fill(Color.primary.opacity(isHovering || isDragging ? 0.82 : 0.62))
+                    .frame(width: max(0, width * fraction), height: trackHeight)
+
+                Circle()
+                    .fill(Color.primary)
+                    .frame(width: thumbSize, height: thumbSize)
+                    .offset(
+                        x: min(
+                            max(0, width * fraction - thumbSize / 2),
+                            max(0, width - thumbSize)
+                        )
+                    )
+                    .opacity(thumbSize > 0 ? 1 : 0)
+            }
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .animation(.easeOut(duration: 0.14), value: isHovering)
+            .animation(.easeOut(duration: 0.12), value: isDragging)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        guard width > 0 else { return }
+                        isDragging = true
+                        volume = Double(min(max(value.location.x / width, 0), 1))
+                    }
+                    .onEnded { value in
+                        defer { isDragging = false }
+                        guard width > 0 else { return }
+                        volume = Double(min(max(value.location.x / width, 0), 1))
+                    }
+            )
+            .onHover { hovering in
+                isHovering = hovering
+            }
+        }
+        .frame(height: 14)
+        .accessibilityElement()
+        .accessibilityValue(Text("\(Int((volume * 100).rounded()))%"))
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment:
+                volume = min(1, volume + 0.0625)
+            case .decrement:
+                volume = max(0, volume - 0.0625)
+            @unknown default:
+                break
+            }
+        }
+    }
+}
+
 struct AirPlayRoutePicker: NSViewRepresentable {
     func makeNSView(context: Context) -> AVRoutePickerView {
         let view = AVRoutePickerView()
+        view.isRoutePickerButtonBordered = false
         view.setRoutePickerButtonColor(.labelColor, for: .normal)
         view.setRoutePickerButtonColor(.labelColor, for: .normalHighlighted)
         let accent = NSColor(srgbRed: 1, green: 0, blue: 0.337, alpha: 1)

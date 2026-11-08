@@ -60,15 +60,15 @@ private struct PlaybackQueueHost: View {
                 PlaybackQueuePanel(playback: playback)
                     .frame(maxHeight: .infinity)
                     .padding(.top, 12)
-                    .padding(.trailing, 16)
+                    .padding(.trailing, 18)
                     .padding(.bottom, 76)
                     .transition(
                         .move(edge: .trailing)
-                            .combined(with: .scale(scale: 0.9, anchor: .bottomTrailing))
+                            .combined(with: .scale(scale: 0.96, anchor: .bottomTrailing))
                     )
             }
         }
-        .animation(.spring(response: 0.36, dampingFraction: 0.78), value: playback.isQueuePresented)
+        .animation(.spring(response: 0.28, dampingFraction: 0.92), value: playback.isQueuePresented)
     }
 }
 
@@ -304,7 +304,8 @@ private struct PlaybackQueuePanel: View {
 
     var body: some View {
         panelSurface
-            .animation(.spring(response: 0.34, dampingFraction: 0.8), value: isEditing)
+            .shadow(color: .black.opacity(0.14), radius: 20, x: 0, y: 8)
+            .animation(.spring(response: 0.28, dampingFraction: 0.92), value: isEditing)
     }
 
     @ViewBuilder

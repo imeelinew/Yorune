@@ -44,9 +44,15 @@ struct AlbumArtworkView: View {
                     swiftUIImage(image)
                         .resizable()
                         .scaledToFit()
-                        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+                        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                        .overlay {
+                            if cornerRadius > 0 {
+                                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                                    .strokeBorder(.primary.opacity(0.08), lineWidth: 0.5)
+                            }
+                        }
                 } else {
-                    RoundedRectangle(cornerRadius: cornerRadius)
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .fill(.quaternary)
                         .overlay {
                             Image(systemName: "music.note")

@@ -14,7 +14,7 @@ struct AlbumGridView: View {
     @State private var refreshRequested = false
 
     private let columns = [
-        GridItem(.adaptive(minimum: 140, maximum: 220), spacing: 20, alignment: .top)
+        GridItem(.adaptive(minimum: 150, maximum: 210), spacing: 22, alignment: .top)
     ]
 
     var body: some View {
@@ -135,7 +135,7 @@ struct AlbumGridView: View {
                 Text("No Results")
                     .font(.title3)
             } else {
-                LazyVGrid(columns: columns, alignment: .leading, spacing: 24) {
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 26) {
                     ForEach(sortedAlbums) { album in
                         Button {
                             openAlbum(album)
@@ -145,7 +145,9 @@ struct AlbumGridView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(24)
+                .padding(.horizontal, 28)
+                .padding(.top, 20)
+                .padding(.bottom, 32)
             }
         }
     }
@@ -253,7 +255,7 @@ struct DownloadedAlbumGridView: View {
     let openAlbum: (Album) -> Void
 
     private let columns = [
-        GridItem(.adaptive(minimum: 140, maximum: 220), spacing: 20, alignment: .top)
+        GridItem(.adaptive(minimum: 150, maximum: 210), spacing: 22, alignment: .top)
     ]
 
     var body: some View {
@@ -266,7 +268,7 @@ struct DownloadedAlbumGridView: View {
                     .font(.title3)
             } else {
                 ScrollView {
-                    LazyVGrid(columns: columns, alignment: .leading, spacing: 24) {
+                    LazyVGrid(columns: columns, alignment: .leading, spacing: 26) {
                         ForEach(sortedAlbums) { album in
                             Button {
                                 openAlbum(album)
@@ -281,7 +283,9 @@ struct DownloadedAlbumGridView: View {
                             }
                         }
                     }
-                    .padding(24)
+                    .padding(.horizontal, 28)
+                    .padding(.top, 20)
+                    .padding(.bottom, 32)
                 }
             }
         }
@@ -316,7 +320,9 @@ struct AlbumDetailView: View {
     let isOfflineLibrary: Bool
     let backgroundTopInset: CGFloat
 
+    @Environment(\.colorScheme) private var colorScheme
     @State private var state: LoadState
+    @State private var hoveredSongID: String?
 
     init(
         album: Album,
@@ -342,9 +348,14 @@ struct AlbumDetailView: View {
                 GeometryReader { geometry in
                     // The detail content starts below the toolbar. Match the
                     // window backdrop's origin so both gradients join seamlessly.
-                    AlbumDetailBackground(url: album.artworkURL)
-                        .frame(height: geometry.size.height + backgroundTopInset)
-                        .offset(y: -backgroundTopInset)
+                    AlbumDetailBackground(
+                        url: album.artworkURL,
+                        maxHeight: 480,
+                        lightOpacity: 0.24,
+                        darkOpacity: 0.42
+                    )
+                    .frame(height: geometry.size.height + backgroundTopInset)
+                    .offset(y: -backgroundTopInset)
                 }
             }
             .task(id: album.id) {
@@ -368,22 +379,37 @@ struct AlbumDetailView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 let artist = albumArtist(visibleSongs)
+                let currentSongID = playback.currentSong?.id
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         albumHeader(visibleSongs)
-
-                        Divider()
+                            .padding(.horizontal, 8)
 
                         LazyVStack(spacing: 0) {
                             ForEach(Array(visibleSongs.enumerated()), id: \.element.id) { index, song in
+                                let isCurrent = currentSongID == song.id
+                                let nextIsCurrent = index + 1 < visibleSongs.count
+                                    && visibleSongs[index + 1].id == currentSongID
+                                let hideDivider = isCurrent
+                                    || nextIsCurrent
+                                    || hoveredSongID == song.id
+                                    || (index + 1 < visibleSongs.count && hoveredSongID == visibleSongs[index + 1].id)
+
                                 AlbumTrackRow(
                                     song: song,
                                     index: index,
                                     albumArtist: artist,
-                                    isCurrent: playback.currentSong?.id == song.id,
+                                    isCurrent: isCurrent,
                                     isPlaying: playback.isPlaying,
                                     isDownloaded: downloads.isDownloaded(song.id),
-                                    isDownloading: downloads.isDownloading(song.id)
+                                    isDownloading: downloads.isDownloading(song.id),
+                                    onHoverChange: { hovering in
+                                        if hovering {
+                                            hoveredSongID = song.id
+                                        } else if hoveredSongID == song.id {
+                                            hoveredSongID = nil
+                                        }
+                                    }
                                 ) {
                                     playback.play(song, in: visibleSongs)
                                 }
@@ -419,13 +445,21 @@ struct AlbumDetailView: View {
                                 }
 
                                 if index < visibleSongs.count - 1 {
-                                    Divider()
-                                        .padding(.leading, 40)
+                                    Rectangle()
+                                        .fill(Color.primary.opacity(hideDivider ? 0 : 0.06))
+                                        .frame(height: 0.5)
+                                        .padding(.leading, 48)
+                                        .padding(.trailing, 14)
                                 }
                             }
                         }
+
+                        albumFooter(visibleSongs)
+                            .padding(.horizontal, 12)
+                            .padding(.top, -8)
                     }
-                    .padding(.vertical, 24)
+                    .padding(.top, 20)
+                    .padding(.bottom, 36)
                 }
                 .contentMargins(.horizontal, 24, for: .scrollContent)
             }
@@ -445,39 +479,54 @@ struct AlbumDetailView: View {
 
     private func albumHeader(_ songs: [Song]) -> some View {
         let artist = albumArtist(songs)
-        return HStack(alignment: .top, spacing: 20) {
-            AlbumArtworkView(url: album.artworkURL, cornerRadius: 8)
-                .frame(width: 180, height: 180)
+        return HStack(alignment: .bottom, spacing: 26) {
+            AlbumArtworkView(url: album.artworkURL, cornerRadius: 12)
+                .frame(width: 204, height: 204)
+                .shadow(
+                    color: .black.opacity(colorScheme == .dark ? 0.46 : 0.22),
+                    radius: 24,
+                    x: 0,
+                    y: 12
+                )
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("Album")
-                    .font(.subheadline)
+                    .font(.system(size: 11, weight: .bold))
+                    .tracking(0.8)
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
 
                 Text(album.title)
-                    .font(.title)
-                    .fontWeight(.bold)
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundStyle(.primary)
                     .lineLimit(2)
 
                 if !artist.isEmpty {
                     Text(artist)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(YoruneStyle.accent)
                         .lineLimit(1)
+                        .padding(.top, 1)
                 }
 
                 Text(albumMetadata(songs))
-                    .font(.subheadline)
+                    .font(.system(size: 12.5, weight: .medium))
                     .foregroundStyle(.secondary)
                     .padding(.top, 4)
 
-                Spacer(minLength: 24)
+                Spacer(minLength: 20)
 
                 headerButtons(songs)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 204, alignment: .leading)
         }
+    }
+
+    private func albumFooter(_ songs: [Song]) -> some View {
+        let totalMinutes = max(1, Int((songs.reduce(0) { $0 + $1.duration } / 60).rounded()))
+        return Text("\(songs.count) songs, \(totalMinutes) minutes")
+            .font(.system(size: 12))
+            .foregroundStyle(.tertiary)
     }
 
     @ViewBuilder
@@ -490,7 +539,7 @@ struct AlbumDetailView: View {
     }
 
     private func actionButtons(_ songs: [Song], showsTitles: Bool) -> some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 10) {
             prominentPlayButton(songs, showsTitle: showsTitles)
 
             Button {
@@ -498,16 +547,14 @@ struct AlbumDetailView: View {
             } label: {
                 actionLabel("Play Next", systemImage: "text.insert", showsTitle: showsTitles)
             }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
+            .buttonStyle(MacSecondaryCapsuleButtonStyle())
 
             Button {
                 songs.forEach(playback.addToQueue)
             } label: {
                 actionLabel("Add to Queue", systemImage: "text.append", showsTitle: showsTitles)
             }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
+            .buttonStyle(MacSecondaryCapsuleButtonStyle())
 
             if isOfflineLibrary || songs.allSatisfy({ downloads.isDownloaded($0.id) }) {
                 Button {
@@ -519,8 +566,7 @@ struct AlbumDetailView: View {
                         showsTitle: showsTitles
                     )
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
+                .buttonStyle(MacSecondaryCapsuleButtonStyle())
                 .disabled(songs.allSatisfy { !downloads.isDownloaded($0.id) })
             } else {
                 Button {
@@ -532,8 +578,7 @@ struct AlbumDetailView: View {
                         showsTitle: showsTitles
                     )
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
+                .buttonStyle(MacSecondaryCapsuleButtonStyle())
                 .disabled(!songs.contains { song in
                     !downloads.isDownloaded(song.id)
                         && !downloads.isDownloading(song.id)
@@ -542,32 +587,15 @@ struct AlbumDetailView: View {
         }
     }
 
-    @ViewBuilder
     private func prominentPlayButton(_ songs: [Song], showsTitle: Bool) -> some View {
-        if #available(macOS 26.0, *) {
-            Button {
-                if let firstSong = songs.first {
-                    playback.play(firstSong, in: songs)
-                }
-            } label: {
-                actionLabel("Play", systemImage: "play.fill", showsTitle: showsTitle)
-                    .foregroundStyle(.white)
+        Button {
+            if let firstSong = songs.first {
+                playback.play(firstSong, in: songs)
             }
-            .buttonStyle(.glassProminent)
-            .controlSize(.large)
-            .tint(YoruneStyle.accent)
-        } else {
-            Button {
-                if let firstSong = songs.first {
-                    playback.play(firstSong, in: songs)
-                }
-            } label: {
-                actionLabel("Play", systemImage: "play.fill", showsTitle: showsTitle)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .tint(YoruneStyle.accent)
+        } label: {
+            actionLabel("Play", systemImage: "play.fill", showsTitle: showsTitle)
         }
+        .buttonStyle(MacPrimaryCapsuleButtonStyle())
     }
 
     @ViewBuilder
@@ -611,22 +639,11 @@ struct AlbumDetailView: View {
             parts.append(genre)
         }
         if let year = album.year, year > 0 {
-            parts.append(String(localized: "album.year", defaultValue: "\(year)"))
+            parts.append(String(localized: "album.year", defaultValue: "\(String(year))"))
         }
-        let totalDuration = songs.reduce(0) { $0 + $1.duration }
-        parts.append("\(songs.count) • \(formatDuration(totalDuration))")
+        let totalMinutes = max(1, Int((songs.reduce(0) { $0 + $1.duration } / 60).rounded()))
+        parts.append(String(localized: "\(songs.count) songs, \(totalMinutes) minutes"))
         return parts.joined(separator: " · ")
-    }
-
-    private func formatDuration(_ seconds: Double) -> String {
-        let totalSeconds = max(0, Int(seconds.rounded(.down)))
-        let hours = totalSeconds / 3600
-        let minutes = totalSeconds / 60
-        let seconds = totalSeconds % 60
-        if hours > 0 {
-            return "\(hours):\(String(format: "%02d", minutes % 60)):\(String(format: "%02d", seconds))"
-        }
-        return "\(minutes):\(String(format: "%02d", seconds))"
     }
 
     private func loadSongs() async {
@@ -648,6 +665,79 @@ struct AlbumDetailView: View {
 
 }
 
+private struct MacPrimaryCapsuleButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    @State private var isHovering = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 18)
+            .frame(height: 34)
+            .background {
+                Capsule()
+                    .fill(YoruneStyle.accent)
+                    .brightness(configuration.isPressed ? -0.06 : (isHovering ? 0.04 : 0))
+            }
+            .shadow(
+                color: YoruneStyle.accent.opacity(isHovering ? 0.34 : 0.22),
+                radius: isHovering ? 12 : 8,
+                x: 0,
+                y: 4
+            )
+            .opacity(isEnabled ? 1 : 0.45)
+            .contentShape(Capsule())
+            .animation(.easeOut(duration: 0.15), value: isHovering)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .onHover { hovering in
+                isHovering = hovering
+            }
+    }
+}
+
+private struct MacSecondaryCapsuleButtonStyle: ButtonStyle {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.isEnabled) private var isEnabled
+    @State private var isHovering = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        let baseOpacity = colorScheme == .dark ? 0.10 : 0.055
+        let hoverOpacity = colorScheme == .dark ? 0.15 : 0.09
+        let pressedOpacity = colorScheme == .dark ? 0.20 : 0.13
+
+        configuration.label
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 15)
+            .frame(height: 34)
+            .background {
+                Capsule()
+                    .fill(
+                        Color.primary.opacity(
+                            configuration.isPressed
+                                ? pressedOpacity
+                                : (isHovering && isEnabled ? hoverOpacity : baseOpacity)
+                        )
+                    )
+            }
+            .overlay {
+                Capsule()
+                    .strokeBorder(
+                        Color.primary.opacity(colorScheme == .dark ? 0.12 : 0.07),
+                        lineWidth: 0.5
+                    )
+            }
+            .opacity(isEnabled ? 1 : 0.4)
+            .contentShape(Capsule())
+            .animation(.easeOut(duration: 0.15), value: isHovering)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .onHover { hovering in
+                isHovering = hovering
+            }
+    }
+}
+
 private struct AlbumTrackRow: View {
     let song: Song
     let index: Int
@@ -656,7 +746,10 @@ private struct AlbumTrackRow: View {
     let isPlaying: Bool
     let isDownloaded: Bool
     let isDownloading: Bool
+    let onHoverChange: (Bool) -> Void
     let play: () -> Void
+
+    @State private var isHovering = false
 
     private var showsArtist: Bool {
         !song.artist.isEmpty && song.artist != albumArtist
@@ -664,23 +757,29 @@ private struct AlbumTrackRow: View {
 
     var body: some View {
         Button(action: play) {
-            HStack(spacing: 12) {
+            HStack(spacing: 14) {
                 Group {
                     if isCurrent {
                         Image(systemName: isPlaying ? "waveform" : "pause.fill")
+                            .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(YoruneStyle.accent)
+                            .symbolEffect(.variableColor.iterative, isActive: isPlaying)
+                    } else if isHovering {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.primary)
                     } else {
                         Text(song.position.isEmpty ? "\(index + 1)" : song.position)
-                            .font(.system(size: 14))
+                            .font(.system(size: 13))
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
                     }
                 }
-                .frame(width: 28, alignment: .trailing)
+                .frame(width: 24, alignment: .trailing)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(song.title)
-                        .font(.system(size: 14))
+                        .font(.system(size: 13.5, weight: isCurrent ? .semibold : .regular))
                         .foregroundStyle(isCurrent ? YoruneStyle.accent : Color.primary)
                         .lineLimit(1)
 
@@ -693,29 +792,38 @@ private struct AlbumTrackRow: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                if isDownloaded {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .accessibilityLabel("Downloaded")
-                } else if isDownloading {
+                if isDownloading {
                     ProgressView()
                         .controlSize(.mini)
-                        .frame(width: 11, height: 11)
+                        .frame(width: 12, height: 12)
                         .accessibilityLabel("Downloading")
+                } else if isDownloaded {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
+                        .accessibilityLabel("Downloaded")
                 }
 
                 Text(formatDuration(song.duration))
-                    .font(.system(size: 12))
+                    .font(.system(size: 12.5))
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
-                    .frame(width: 45, alignment: .trailing)
+                    .frame(width: 44, alignment: .trailing)
             }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 4)
+            .padding(.vertical, 9)
+            .padding(.horizontal, 10)
             .contentShape(Rectangle())
         }
-        .buttonStyle(AlbumTrackRowButtonStyle())
+        .buttonStyle(
+            AlbumTrackRowButtonStyle(
+                isCurrent: isCurrent,
+                isHovering: isHovering
+            )
+        )
+        .onHover { hovering in
+            isHovering = hovering
+            onHoverChange(hovering)
+        }
     }
 
     private func formatDuration(_ seconds: Double) -> String {
@@ -725,23 +833,30 @@ private struct AlbumTrackRow: View {
 }
 
 private struct AlbumTrackRowButtonStyle: ButtonStyle {
-    @State private var isHovering = false
+    @Environment(\.colorScheme) private var colorScheme
+    let isCurrent: Bool
+    let isHovering: Bool
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .background {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(
-                        isHovering || configuration.isPressed
-                            ? Color.primary.opacity(0.06)
-                            : Color.clear
-                    )
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(backgroundColor(isPressed: configuration.isPressed))
             }
-            .opacity(configuration.isPressed ? 0.8 : 1)
-            .animation(YoruneStyle.quickAnimation, value: configuration.isPressed)
-            .animation(YoruneStyle.quickAnimation, value: isHovering)
-            .onHover { hovering in
-                isHovering = hovering
-            }
+            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
+            .animation(.easeOut(duration: 0.14), value: isHovering)
+    }
+
+    private func backgroundColor(isPressed: Bool) -> Color {
+        if isPressed {
+            return Color.primary.opacity(colorScheme == .dark ? 0.14 : 0.09)
+        }
+        if isCurrent {
+            return YoruneStyle.accent.opacity(colorScheme == .dark ? 0.14 : 0.075)
+        }
+        if isHovering {
+            return Color.primary.opacity(colorScheme == .dark ? 0.08 : 0.05)
+        }
+        return .clear
     }
 }
