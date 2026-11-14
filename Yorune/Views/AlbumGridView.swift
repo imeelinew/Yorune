@@ -247,64 +247,6 @@ private struct TrackpadPullObserver: NSViewRepresentable {
     }
 }
 
-struct DownloadedAlbumGridView: View {
-    @ObservedObject var downloads: DownloadStore
-    @ObservedObject var playback: PlaybackController
-
-    @Binding var searchText: String
-    let openAlbum: (Album) -> Void
-
-    private let columns = [
-        GridItem(.adaptive(minimum: 150, maximum: 210), spacing: 22, alignment: .top)
-    ]
-
-    var body: some View {
-        Group {
-            if downloads.offlineAlbums.isEmpty {
-                Text("No Downloads")
-                    .font(.title3)
-            } else if filteredAlbums.isEmpty {
-                Text("No Results")
-                    .font(.title3)
-            } else {
-                ScrollView {
-                    LazyVGrid(columns: columns, alignment: .leading, spacing: 26) {
-                        ForEach(sortedAlbums) { album in
-                            Button {
-                                openAlbum(album)
-                            } label: {
-                                AlbumCardView(album: album)
-                            }
-                            .buttonStyle(.plain)
-                            .contextMenu {
-                                Button("Remove Downloads", role: .destructive) {
-                                    downloads.remove(albumID: album.id)
-                                }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 28)
-                    .padding(.top, 20)
-                    .padding(.bottom, 32)
-                }
-            }
-        }
-    }
-
-    private var sortedAlbums: [Album] {
-        filteredAlbums.sortedByLastPlayed(recentPlays: playback.recentAlbumPlays)
-    }
-
-    private var filteredAlbums: [Album] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return downloads.offlineAlbums }
-        return downloads.offlineAlbums.filter {
-            $0.title.localizedStandardContains(query)
-                || $0.artist.localizedStandardContains(query)
-        }
-    }
-}
-
 struct AlbumDetailView: View {
 
     private enum LoadState {

@@ -204,7 +204,7 @@ struct ArtworkTintBackground<Artwork: View>: View {
 
     private var platformBackground: Color {
 #if canImport(AppKit)
-        Color(nsColor: .windowBackgroundColor)
+        Color.clear
 #else
         Color(uiColor: .systemBackground)
 #endif

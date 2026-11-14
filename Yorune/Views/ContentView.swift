@@ -20,6 +20,7 @@ struct ContentView: View {
             .frame(width: 0, height: 0)
         }
         .tint(YoruneStyle.accent)
+        .containerBackground(.clear, for: .window)
     }
 }
 
@@ -29,24 +30,20 @@ private struct LibraryWindowView: View {
     let playback: PlaybackController
     let openSettings: () -> Void
 
-    @State private var selection: LibrarySection? = .albums
-
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            NavigationSplitView {
-                SidebarView(selection: $selection)
-                    .navigationSplitViewColumnWidth(min: 150, ideal: 180, max: 220)
-            } detail: {
-                LibraryDetailView(
-                    library: library,
-                    downloads: downloads,
-                    playback: playback,
-                    selection: selection,
-                    openSettings: openSettings
-                )
-            }
+            LibraryDetailView(
+                library: library,
+                downloads: downloads,
+                playback: playback,
+                openSettings: openSettings
+            )
 
             PlaybackQueueHost(playback: playback)
+        }
+        .background {
+            WindowLiquidGlassBackground()
+                .ignoresSafeArea()
         }
     }
 }
@@ -76,79 +73,64 @@ private struct LibraryDetailView: View {
     @ObservedObject var library: AlbumLibraryStore
     @ObservedObject var downloads: DownloadStore
     @ObservedObject var playback: PlaybackController
-    let selection: LibrarySection?
     let openSettings: () -> Void
     @State private var selectedAlbum: Album?
     @State private var searchText = ""
 
     var body: some View {
-        NavigationStack {
-            GeometryReader { geometry in
-                ZStack {
-                    libraryContent
-                        .opacity(selectedAlbum == nil ? 1 : 0)
-                        .allowsHitTesting(selectedAlbum == nil)
-                        .accessibilityHidden(selectedAlbum != nil)
+        ZStack {
+            libraryContent
+                .opacity(selectedAlbum == nil ? 1 : 0)
+                .allowsHitTesting(selectedAlbum == nil)
+                .accessibilityHidden(selectedAlbum != nil)
 
-                    if let album = selectedAlbum {
-                        let useOfflineSongs = selection == .downloads
-                            && downloads.offlineAlbums.contains(where: { $0.id == album.id })
-                        AlbumDetailView(
-                            album: album,
-                            downloads: downloads,
-                            playback: playback,
-                            initialSongs: useOfflineSongs
-                                ? downloads.offlineSongs(in: album.id)
-                                : library.cachedSongs(in: album),
-                            songLoader: { album in
-                                if useOfflineSongs {
-                                    return downloads.offlineSongs(in: album.id)
-                                }
-                                return try await library.fetchSongs(in: album)
-                            },
-                            isOfflineLibrary: useOfflineSongs
-                        )
-                        .id(album.id)
-                    }
-                }
-                .id(selection)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background {
-                if let selectedAlbum {
-                    // 详情页唯一的封面晕染背景（原先详情视图内部还叠了一层完全相同
-                    // 的模糊背景，被遮挡却仍然每帧参与渲染）。
-                    AlbumDetailBackground(
-                        url: selectedAlbum.artworkURL,
-                        maxHeight: 480,
-                        lightOpacity: 0.24,
-                        darkOpacity: 0.42
-                    )
-                    .ignoresSafeArea()
-                }
-            }
-            .navigationTitle(
-                selectedAlbum?.title
-                    ?? String(localized: selection == .downloads ? "Downloaded" : "Albums")
-            )
-            .toolbarBackgroundVisibility(.hidden, for: .automatic)
-            .searchable(text: $searchText, placement: .toolbar, prompt: Text("Search Albums"))
-            .toolbar {
-                if selectedAlbum != nil {
-                    ToolbarItem(placement: .navigation) {
-                        Button { selectedAlbum = nil } label: {
-                            Label("Back", systemImage: "chevron.backward")
+            if let album = selectedAlbum {
+                let useOfflineSongs = !library.albums.contains(where: { $0.id == album.id })
+                    && downloads.offlineAlbums.contains(where: { $0.id == album.id })
+                AlbumDetailView(
+                    album: album,
+                    downloads: downloads,
+                    playback: playback,
+                    initialSongs: useOfflineSongs
+                        ? downloads.offlineSongs(in: album.id)
+                        : library.cachedSongs(in: album),
+                    songLoader: { album in
+                        if useOfflineSongs {
+                            return downloads.offlineSongs(in: album.id)
                         }
-                        .keyboardShortcut("[", modifiers: .command)
-                    }
-                }
+                        return try await library.fetchSongs(in: album)
+                    },
+                    isOfflineLibrary: useOfflineSongs
+                )
+                .id(album.id)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onChange(of: selection) { _, _ in
-            selectedAlbum = nil
-            searchText = ""
+        .background {
+            if let selectedAlbum {
+                // 详情页唯一的封面晕染背景（原先详情视图内部还叠了一层完全相同
+                // 的模糊背景，被遮挡却仍然每帧参与渲染）。
+                AlbumDetailBackground(
+                    url: selectedAlbum.artworkURL,
+                    maxHeight: 480,
+                    lightOpacity: 0.24,
+                    darkOpacity: 0.42
+                )
+                .ignoresSafeArea()
+            }
+        }
+        .navigationTitle(selectedAlbum?.title ?? String(localized: "Albums"))
+        .toolbarBackgroundVisibility(.hidden, for: .automatic)
+        .searchable(text: $searchText, placement: .toolbar, prompt: Text("Search Albums"))
+        .toolbar {
+            if selectedAlbum != nil {
+                ToolbarItem(placement: .navigation) {
+                    Button { selectedAlbum = nil } label: {
+                        Label("Back", systemImage: "chevron.backward")
+                    }
+                    .keyboardShortcut("[", modifiers: .command)
+                }
+            }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             PlaybackBarInset(playback: playback, openAlbumFromBar: openCurrentPlayingAlbum)
@@ -173,26 +155,14 @@ private struct LibraryDetailView: View {
     }
 
     private var libraryContent: some View {
-        Group {
-            switch selection {
-            case .downloads:
-                DownloadedAlbumGridView(
-                    downloads: downloads,
-                    playback: playback,
-                    searchText: $searchText,
-                    openAlbum: { selectedAlbum = $0 }
-                )
-            default:
-                AlbumGridView(
-                    library: library,
-                    downloads: downloads,
-                    playback: playback,
-                    openSettings: openSettings,
-                    searchText: $searchText,
-                    openAlbum: { selectedAlbum = $0 }
-                )
-            }
-        }
+        AlbumGridView(
+            library: library,
+            downloads: downloads,
+            playback: playback,
+            openSettings: openSettings,
+            searchText: $searchText,
+            openAlbum: { selectedAlbum = $0 }
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
@@ -662,5 +632,66 @@ private struct QueueFooterIconButton: View {
         .opacity(isEnabled ? 1 : 0.45)
         .help(Text(accessibilityLabel))
         .accessibilityLabel(Text(accessibilityLabel))
+    }
+}
+
+/// 复刻 Kit 主面板的 Liquid Glass + 颜色蒙版背景：
+/// 底层使用降低填充层不透明度的 behindWindow 模糊蒙版保证可读性，上层叠加常规 Liquid Glass。
+private struct WindowLiquidGlassBackground: NSViewRepresentable {
+    func makeNSView(context: Context) -> ContainerView {
+        ContainerView()
+    }
+
+    func updateNSView(_ nsView: ContainerView, context: Context) {}
+
+    final class ContainerView: NSView {
+        private let backdrop = DimmedBackdropView()
+
+        override init(frame frameRect: NSRect) {
+            super.init(frame: frameRect)
+            wantsLayer = true
+            layer?.backgroundColor = NSColor.clear.cgColor
+
+            backdrop.frame = bounds
+            backdrop.autoresizingMask = [.width, .height]
+            backdrop.material = .headerView
+            backdrop.blendingMode = .behindWindow
+            backdrop.state = .active
+            addSubview(backdrop)
+
+            if #available(macOS 26.0, *) {
+                let glass = NSGlassEffectView(frame: bounds)
+                glass.autoresizingMask = [.width, .height]
+                glass.style = .regular
+                glass.cornerRadius = 0
+                addSubview(glass)
+            }
+        }
+
+        @available(*, unavailable)
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard let window else { return }
+            window.isOpaque = false
+            window.backgroundColor = .clear
+            window.titlebarAppearsTransparent = true
+        }
+    }
+
+    private final class DimmedBackdropView: NSVisualEffectView {
+        override func updateLayer() {
+            super.updateLayer()
+            for variant in layer?.sublayers ?? [] {
+                for sublayer in variant.sublayers ?? [] where sublayer.name == "fill" {
+                    sublayer.opacity = 0.38
+                }
+            }
+        }
     }
 }

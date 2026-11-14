@@ -54,6 +54,7 @@ struct PlayerBar: View {
             .frame(height: 56)
             .padding(.horizontal, 18)
             .padding(.bottom, 10)
+#if os(iOS)
             .background(alignment: .bottom) {
                 LinearGradient(
                     colors: [
@@ -67,6 +68,7 @@ struct PlayerBar: View {
                 .padding(.bottom, -10)
                 .allowsHitTesting(false)
             }
+#endif
             .zIndex(2)
         }
     }
