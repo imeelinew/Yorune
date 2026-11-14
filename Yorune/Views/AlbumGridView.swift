@@ -304,14 +304,13 @@ struct AlbumDetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         albumHeader(visibleSongs)
-                            .padding(.horizontal, 8)
 
                         trackListSection(visibleSongs)
                     }
                     .padding(.top, 20)
                     .padding(.bottom, 36)
                 }
-                .contentMargins(.horizontal, 24, for: .scrollContent)
+                .contentMargins(.horizontal, 28, for: .scrollContent)
             }
         case .failed:
             VStack(spacing: 16) {
@@ -404,8 +403,8 @@ struct AlbumDetailView: View {
 
                 if !artist.isEmpty {
                     Text(artist)
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(YoruneStyle.accent)
+                        .font(.system(size: 17, weight: .regular))
+                        .foregroundStyle(YoruneStyle.accent.mix(with: .gray, by: 0.25))
                         .lineLimit(1)
                         .padding(.top, 1)
                 }
