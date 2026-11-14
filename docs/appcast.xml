@@ -4,6 +4,15 @@
         <title>Yorune Updates</title>
         <language>en</language>
         <item>
+            <title>0.3.0</title>
+            <pubDate>Sat, 14 Nov 2026 09:40:15 +0000</pubDate>
+            <link>https://github.com/imeelinew/Yorune</link>
+            <sparkle:version>41</sparkle:version>
+            <sparkle:shortVersionString>0.3.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/imeelinew/Yorune/releases/download/v0.3.0/Yorune-0.3.0.zip" length="3895165" type="application/octet-stream" sparkle:edSignature="rlNk/cjnGmEjRdDsyE4ADR0P2PXgxI68reaqynA1L+kKdZuM6VvXzSBb8Bt3pR6S6SDi3GaS2Vh4EXMuNrnhDg=="/>
+        </item>
+        <item>
             <title>0.2.0</title>
             <pubDate>Sat, 24 Oct 2026 08:18:33 +0000</pubDate>
             <link>https://github.com/imeelinew/Yorune</link>
