@@ -335,8 +335,6 @@ struct AlbumDetailView: View {
             LazyVStack(spacing: 0) {
                 ForEach(Array(visibleSongs.enumerated()), id: \.element.id) { index, song in
                     let isCurrent = currentSongID == song.id
-                    let nextSongID = index + 1 < visibleSongs.count ? visibleSongs[index + 1].id : nil
-                    let nextIsCurrent = nextSongID != nil && nextSongID == currentSongID
 
                     AlbumTrackRow(
                         song: song,
@@ -380,8 +378,8 @@ struct AlbumDetailView: View {
                         }
                     }
 
-                    if nextSongID != nil {
-                        AlbumTrackDivider(hidden: isCurrent || nextIsCurrent)
+                    if index < visibleSongs.count - 1 {
+                        AlbumTrackDivider()
                     }
                 }
             }
@@ -578,11 +576,9 @@ struct AlbumDetailView: View {
 }
 
 private struct AlbumTrackDivider: View {
-    let hidden: Bool
-
     var body: some View {
         Rectangle()
-            .fill(Color.primary.opacity(hidden ? 0 : 0.06))
+            .fill(Color.primary.opacity(0.06))
             .frame(height: 0.5)
             .padding(.leading, 48)
             .padding(.trailing, 14)
@@ -653,7 +649,7 @@ private struct AlbumTrackRow: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(song.title)
-                        .font(.system(size: 13.5, weight: isCurrent ? .semibold : .regular))
+                        .font(.system(size: 13.5))
                         .foregroundStyle(isCurrent ? YoruneStyle.accent : Color.primary)
                         .lineLimit(1)
 
@@ -688,16 +684,16 @@ private struct AlbumTrackRow: View {
             .padding(.horizontal, 10)
             .contentShape(Rectangle())
         }
-        .buttonStyle(AlbumTrackRowButtonStyle(isCurrent: isCurrent))
+        .buttonStyle(AlbumTrackRowButtonStyle())
     }
 
     @ViewBuilder
     private var leadingIndicator: some View {
         if isCurrent {
-            Image(systemName: isPlaying ? "waveform" : "pause.fill")
-                .font(.system(size: 13, weight: .semibold))
+            Image(systemName: isPlaying ? "speaker.wave.2.fill" : "speaker.fill")
+                .font(.system(size: 11))
                 .foregroundStyle(YoruneStyle.accent)
-                .symbolEffect(.variableColor.iterative, isActive: isPlaying)
+                .accessibilityLabel(isPlaying ? "Now Playing" : "Paused")
         } else {
             Text(song.position.isEmpty ? "\(index + 1)" : song.position)
                 .font(.system(size: 13))
@@ -714,7 +710,6 @@ private struct AlbumTrackRow: View {
 
 private struct AlbumTrackRowButtonStyle: ButtonStyle {
     @Environment(\.colorScheme) private var colorScheme
-    let isCurrent: Bool
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -728,9 +723,6 @@ private struct AlbumTrackRowButtonStyle: ButtonStyle {
     private func backgroundColor(isPressed: Bool) -> Color {
         if isPressed {
             return Color.primary.opacity(colorScheme == .dark ? 0.14 : 0.09)
-        }
-        if isCurrent {
-            return YoruneStyle.accent.opacity(colorScheme == .dark ? 0.14 : 0.075)
         }
         return .clear
     }
