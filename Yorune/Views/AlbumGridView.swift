@@ -448,7 +448,7 @@ struct AlbumDetailView: View {
 
     private func actionButtons(_ songs: [Song], showsTitles: Bool) -> some View {
         HStack(spacing: 10) {
-            prominentPlayButton(songs, showsTitle: showsTitles)
+            prominentPlayButton(songs)
 
             Button {
                 playAlbumNext(songs)
@@ -495,15 +495,17 @@ struct AlbumDetailView: View {
         }
     }
 
-    private func prominentPlayButton(_ songs: [Song], showsTitle: Bool) -> some View {
+    private func prominentPlayButton(_ songs: [Song]) -> some View {
         Button {
             if let firstSong = songs.first {
                 playback.play(firstSong, in: songs)
             }
         } label: {
-            actionLabel("Play", systemImage: "play.fill", showsTitle: showsTitle)
+            Image(systemName: "play.fill")
+                .accessibilityLabel(Text("Play"))
         }
-        .buttonStyle(MacPrimaryCapsuleButtonStyle())
+        .buttonStyle(MacSecondaryCapsuleButtonStyle())
+        .help(Text("Play"))
     }
 
     @ViewBuilder
@@ -584,35 +586,6 @@ private struct AlbumTrackDivider: View {
             .frame(height: 0.5)
             .padding(.leading, 48)
             .padding(.trailing, 14)
-    }
-}
-
-private struct MacPrimaryCapsuleButtonStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var isEnabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        let label = configuration.label
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 18)
-            .frame(height: 34)
-            .contentShape(Capsule())
-
-        Group {
-            if #available(macOS 26.0, *) {
-                label
-                    .glassEffect(.regular.tint(YoruneStyle.accent).interactive(), in: Capsule())
-            } else {
-                label
-                    .background {
-                        Capsule()
-                            .fill(YoruneStyle.accent)
-                            .brightness(configuration.isPressed ? -0.06 : 0)
-                    }
-            }
-        }
-        .opacity(isEnabled ? 1 : 0.45)
-        .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
