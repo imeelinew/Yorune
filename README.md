@@ -25,7 +25,7 @@
 ---
 
 <p align="center">
-  <img alt="Yorune music client" src=".github/assets/app.png" width="860">
+  <img alt="Yorune music client" src=".github/assets/app-v0.3.0.png" width="860">
 </p>
 
 ## About
