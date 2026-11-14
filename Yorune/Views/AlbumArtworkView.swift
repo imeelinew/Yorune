@@ -1,4 +1,5 @@
 import CryptoKit
+import ImageIO
 import SwiftUI
 
 #if canImport(AppKit)
@@ -87,8 +88,20 @@ struct AlbumArtworkView: View {
             displayedCacheKey = nil
         }
 
-        guard let data = await ArtworkCache.shared.data(for: url),
-              let loadedImage = PlatformImage(data: data) else { return }
+        // 磁盘读取与解码都放到后台线程，并预先降采样、强制解码，
+        // 避免滚动时在主线程上解码整张大封面造成掉帧。
+        let cgImage = await Task.detached(priority: .userInitiated) { () -> CGImage? in
+            let data: Data?
+            if let cached = ArtworkCache.shared.cachedData(for: url) {
+                data = cached
+            } else {
+                data = await ArtworkCache.shared.data(for: url)
+            }
+            guard let data else { return nil }
+            return ArtworkDecoder.decode(data)
+        }.value
+        guard let cgImage else { return }
+        let loadedImage = Self.platformImage(cgImage)
 
         Self.imageCache.setObject(loadedImage, forKey: cacheKey as NSString)
         guard !Task.isCancelled, self.cacheKey == cacheKey else { return }
@@ -100,14 +113,17 @@ struct AlbumArtworkView: View {
         for url: URL?,
         cacheKey: String?
     ) -> PlatformImage? {
-        guard let url, let cacheKey else { return nil }
-        if let image = imageCache.object(forKey: cacheKey as NSString) {
-            return image
-        }
-        guard let data = ArtworkCache.shared.cachedData(for: url),
-              let image = PlatformImage(data: data) else { return nil }
-        imageCache.setObject(image, forKey: cacheKey as NSString)
-        return image
+        // 仅查内存缓存：init 会在每次父视图重绘时执行，不能在这里做磁盘 IO 或解码。
+        guard url != nil, let cacheKey else { return nil }
+        return imageCache.object(forKey: cacheKey as NSString)
+    }
+
+    private static func platformImage(_ cgImage: CGImage) -> PlatformImage {
+#if canImport(AppKit)
+        NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+#else
+        UIImage(cgImage: cgImage)
+#endif
     }
 
     private func swiftUIImage(_ image: PlatformImage) -> Image {
@@ -116,6 +132,22 @@ struct AlbumArtworkView: View {
 #else
         Image(uiImage: image)
 #endif
+    }
+}
+
+enum ArtworkDecoder {
+    /// 封面最大显示约为 204pt@2x / 280pt@3x，模糊背景不需要高分辨率。
+    static let maxPixelSize = 1024
+
+    static func decode(_ data: Data) -> CGImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize
+        ]
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
     }
 }
 
@@ -162,6 +194,8 @@ struct ArtworkTintBackground<Artwork: View>: View {
                             endPoint: .bottom
                         )
                     }
+                    // 把大半径模糊栅格化为一张静态位图，滚动时不再逐帧重新计算模糊。
+                    .drawingGroup()
             }
         }
         .allowsHitTesting(false)

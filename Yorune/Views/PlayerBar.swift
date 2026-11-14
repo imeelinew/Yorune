@@ -7,6 +7,16 @@ import AppKit
 import UIKit
 #endif
 
+/// 只让真正显示播放进度的子视图订阅高频的进度更新。
+struct PlaybackProgressReader<Content: View>: View {
+    @ObservedObject var progress: PlaybackProgress
+    @ViewBuilder let content: (Double) -> Content
+
+    var body: some View {
+        content(progress.elapsedTime)
+    }
+}
+
 struct PlayerBar: View {
     @ObservedObject var playback: PlaybackController
     let openNowPlaying: (() -> Void)?
@@ -205,21 +215,23 @@ struct PlayerBar: View {
         VStack(spacing: 2) {
             transportButtons
 
-            PlayerProgressLane(
-                elapsedTime: displayedElapsedTime,
-                duration: playback.duration,
-                canSeek: playback.duration > 0,
-                isLoading: playback.isBuffering,
-                onScrub: { time in
-                    pendingSeekTime = time
-                    isSeeking = true
-                },
-                onCommit: { time in
-                    pendingSeekTime = time
-                    playback.seek(to: time)
-                    isSeeking = false
-                }
-            )
+            PlaybackProgressReader(progress: playback.progress) { elapsedTime in
+                PlayerProgressLane(
+                    elapsedTime: isSeeking ? pendingSeekTime : elapsedTime,
+                    duration: playback.duration,
+                    canSeek: playback.duration > 0,
+                    isLoading: playback.isBuffering,
+                    onScrub: { time in
+                        pendingSeekTime = time
+                        isSeeking = true
+                    },
+                    onCommit: { time in
+                        pendingSeekTime = time
+                        playback.seek(to: time)
+                        isSeeking = false
+                    }
+                )
+            }
             .frame(maxWidth: 460)
         }
         .padding(.vertical, 4)
@@ -308,10 +320,6 @@ struct PlayerBar: View {
         }
         .padding(.trailing, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
-    }
-
-    private var displayedElapsedTime: Double {
-        isSeeking ? pendingSeekTime : playback.elapsedTime
     }
 
     private var repeatSymbol: String {

@@ -318,10 +318,11 @@ struct AlbumDetailView: View {
     @ObservedObject var playback: PlaybackController
     let songLoader: @MainActor (Album) async throws -> [Song]
     let isOfflineLibrary: Bool
-    let backgroundTopInset: CGFloat
 
     @State private var state: LoadState
-    @State private var hoveredSongID: String?
+    /// 悬停状态放在独立的 ObservableObject 中：滚动时鼠标不断划过行，
+    /// 若作为 @State 会让整个详情页（头部 + 全部行）反复重绘。
+    @StateObject private var hover = TrackHoverModel()
 
     init(
         album: Album,
@@ -329,34 +330,18 @@ struct AlbumDetailView: View {
         playback: PlaybackController,
         initialSongs: [Song]?,
         songLoader: @escaping @MainActor (Album) async throws -> [Song],
-        isOfflineLibrary: Bool = false,
-        backgroundTopInset: CGFloat = 0
+        isOfflineLibrary: Bool = false
     ) {
         self.album = album
         self.downloads = downloads
         self.playback = playback
         self.songLoader = songLoader
         self.isOfflineLibrary = isOfflineLibrary
-        self.backgroundTopInset = backgroundTopInset
         _state = State(initialValue: initialSongs.map(LoadState.loaded) ?? .loading)
     }
 
     var body: some View {
         trackContent
-            .background {
-                GeometryReader { geometry in
-                    // The detail content starts below the toolbar. Match the
-                    // window backdrop's origin so both gradients join seamlessly.
-                    AlbumDetailBackground(
-                        url: album.artworkURL,
-                        maxHeight: 480,
-                        lightOpacity: 0.24,
-                        darkOpacity: 0.42
-                    )
-                    .frame(height: geometry.size.height + backgroundTopInset)
-                    .offset(y: -backgroundTopInset)
-                }
-            }
             .task(id: album.id) {
                 await loadSongs()
             }
@@ -411,12 +396,8 @@ struct AlbumDetailView: View {
             LazyVStack(spacing: 0) {
                 ForEach(Array(visibleSongs.enumerated()), id: \.element.id) { index, song in
                     let isCurrent = currentSongID == song.id
-                    let nextIsCurrent = index + 1 < visibleSongs.count
-                        && visibleSongs[index + 1].id == currentSongID
-                    let hideDivider = isCurrent
-                        || nextIsCurrent
-                        || hoveredSongID == song.id
-                        || (index + 1 < visibleSongs.count && hoveredSongID == visibleSongs[index + 1].id)
+                    let nextSongID = index + 1 < visibleSongs.count ? visibleSongs[index + 1].id : nil
+                    let nextIsCurrent = nextSongID != nil && nextSongID == currentSongID
 
                     AlbumTrackRow(
                         song: song,
@@ -426,12 +407,8 @@ struct AlbumDetailView: View {
                         isPlaying: playback.isPlaying,
                         isDownloaded: downloads.isDownloaded(song.id),
                         isDownloading: downloads.isDownloading(song.id),
-                        onHoverChange: { hovering in
-                            if hovering {
-                                hoveredSongID = song.id
-                            } else if hoveredSongID == song.id {
-                                hoveredSongID = nil
-                            }
+                        onHoverChange: { [hover] hovering in
+                            hover.setHovering(hovering, songID: song.id)
                         }
                     ) {
                         playback.play(song, in: visibleSongs)
@@ -467,12 +444,13 @@ struct AlbumDetailView: View {
                         }
                     }
 
-                    if index < visibleSongs.count - 1 {
-                        Rectangle()
-                            .fill(Color.primary.opacity(hideDivider ? 0 : 0.06))
-                            .frame(height: 0.5)
-                            .padding(.leading, 48)
-                            .padding(.trailing, 14)
+                    if let nextSongID {
+                        AlbumTrackDivider(
+                            hover: hover,
+                            upperSongID: song.id,
+                            lowerSongID: nextSongID,
+                            forceHidden: isCurrent || nextIsCurrent
+                        )
                     }
                 }
             }
@@ -664,6 +642,38 @@ struct AlbumDetailView: View {
         }
     }
 
+}
+
+@MainActor
+private final class TrackHoverModel: ObservableObject {
+    @Published private(set) var hoveredSongID: String?
+
+    func setHovering(_ hovering: Bool, songID: String) {
+        if hovering {
+            if hoveredSongID != songID { hoveredSongID = songID }
+        } else if hoveredSongID == songID {
+            hoveredSongID = nil
+        }
+    }
+}
+
+/// 只有分隔线订阅悬停状态，悬停变化时仅重绘这些极轻量的视图。
+private struct AlbumTrackDivider: View {
+    @ObservedObject var hover: TrackHoverModel
+    let upperSongID: String
+    let lowerSongID: String
+    let forceHidden: Bool
+
+    var body: some View {
+        let hidden = forceHidden
+            || hover.hoveredSongID == upperSongID
+            || hover.hoveredSongID == lowerSongID
+        Rectangle()
+            .fill(Color.primary.opacity(hidden ? 0 : 0.06))
+            .frame(height: 0.5)
+            .padding(.leading, 48)
+            .padding(.trailing, 14)
+    }
 }
 
 private struct MacPrimaryCapsuleButtonStyle: ButtonStyle {

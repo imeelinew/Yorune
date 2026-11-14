@@ -135,6 +135,11 @@ final class AppModel: ObservableObject {
 }
 
 @MainActor
+final class PlaybackProgress: ObservableObject {
+    @Published fileprivate(set) var elapsedTime = 0.0
+}
+
+@MainActor
 final class PlaybackController: ObservableObject {
     enum RepeatMode: Int {
         case off
@@ -151,7 +156,17 @@ final class PlaybackController: ObservableObject {
     @Published private(set) var currentSong: Song?
     @Published private(set) var isPlaying = false
     @Published private(set) var isBuffering = false
-    @Published private(set) var elapsedTime = 0.0
+    /// 播放进度单独发布：每 0.5 秒更新一次，若放在本对象上会让所有观察
+    /// PlaybackController 的页面（专辑详情、网格、侧边栏等）整体重绘，导致滚动卡顿。
+    /// 只有真正显示进度的视图才应观察 `progress`。
+    let progress = PlaybackProgress()
+    private(set) var elapsedTime: Double {
+        get { progress.elapsedTime }
+        set {
+            guard progress.elapsedTime != newValue else { return }
+            progress.elapsedTime = newValue
+        }
+    }
     @Published private(set) var duration = 0.0
     @Published private(set) var volume: Double
     @Published private(set) var isShuffling: Bool

@@ -106,8 +106,7 @@ private struct LibraryDetailView: View {
                                 }
                                 return try await library.fetchSongs(in: album)
                             },
-                            isOfflineLibrary: useOfflineSongs,
-                            backgroundTopInset: geometry.safeAreaInsets.top
+                            isOfflineLibrary: useOfflineSongs
                         )
                         .id(album.id)
                     }
@@ -118,9 +117,14 @@ private struct LibraryDetailView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background {
                 if let selectedAlbum {
-                    ArtworkTintBackground {
-                        AlbumArtworkView(url: selectedAlbum.artworkURL, cornerRadius: 0)
-                    }
+                    // 详情页唯一的封面晕染背景（原先详情视图内部还叠了一层完全相同
+                    // 的模糊背景，被遮挡却仍然每帧参与渲染）。
+                    AlbumDetailBackground(
+                        url: selectedAlbum.artworkURL,
+                        maxHeight: 480,
+                        lightOpacity: 0.24,
+                        darkOpacity: 0.42
+                    )
                     .ignoresSafeArea()
                 }
             }

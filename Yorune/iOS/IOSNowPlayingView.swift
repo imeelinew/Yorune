@@ -215,12 +215,14 @@ struct IOSNowPlayingView: View {
     }
 
     private var progress: some View {
-        IOSPlaybackProgress(
-            songID: playback.currentSong?.id,
-            elapsedTime: playback.elapsedTime,
-            duration: playback.duration,
-            seek: playback.seek
-        )
+        PlaybackProgressReader(progress: playback.progress) { elapsedTime in
+            IOSPlaybackProgress(
+                songID: playback.currentSong?.id,
+                elapsedTime: elapsedTime,
+                duration: playback.duration,
+                seek: playback.seek
+            )
+        }
     }
 
     private var transportControls: some View {
@@ -405,6 +407,8 @@ private struct IOSNowPlayingBackground: View {
                     .scaleEffect(1.6)
                     .blur(radius: 80)
                     .saturation(1.3)
+                    // 栅格化为静态位图，避免队列滚动/动画时逐帧重算大半径模糊。
+                    .drawingGroup()
             }
 
             LinearGradient(
