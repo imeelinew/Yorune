@@ -10,36 +10,19 @@ import UIKit
 struct PlayerBar: View {
     @ObservedObject var playback: PlaybackController
     let openNowPlaying: (() -> Void)?
-    let openNowPlayingWithFrame: ((CGRect?) -> Void)?
     let usesSystemGlassContainer: Bool
 
     @State private var isSeeking = false
     @State private var pendingSeekTime = 0.0
-    @State private var artworkFrame: CGRect = .zero
 
     init(
         playback: PlaybackController,
         usesSystemGlassContainer: Bool = false,
-        openNowPlaying: (() -> Void)? = nil,
-        openNowPlayingWithFrame: ((CGRect?) -> Void)? = nil
+        openNowPlaying: (() -> Void)? = nil
     ) {
         self.playback = playback
         self.usesSystemGlassContainer = usesSystemGlassContainer
         self.openNowPlaying = openNowPlaying
-        self.openNowPlayingWithFrame = openNowPlayingWithFrame
-    }
-
-    private var hasPrimaryBarAction: Bool {
-        openNowPlaying != nil || openNowPlayingWithFrame != nil
-    }
-
-    private func performPrimaryBarAction() {
-        let frame = artworkFrame.width > 0 ? artworkFrame : nil
-        if let openNowPlayingWithFrame {
-            openNowPlayingWithFrame(frame)
-        } else {
-            openNowPlaying?()
-        }
     }
 
     @ViewBuilder
@@ -81,7 +64,7 @@ struct PlayerBar: View {
     private var playerContent: some View {
         GeometryReader { geometry in
 #if os(iOS)
-            if geometry.size.width <= 520, hasPrimaryBarAction {
+            if geometry.size.width <= 520, openNowPlaying != nil {
                 compactPlayerContent
             } else {
                 desktopPlayerContent(isCompact: geometry.size.width <= 720)
@@ -108,17 +91,11 @@ struct PlayerBar: View {
             rightUtilitySection(isCompact: isCompact)
                 .frame(width: rightWidth, height: 56, alignment: .trailing)
         }
-        .contentShape(Capsule())
-        .onTapGesture {
-            if hasPrimaryBarAction {
-                performPrimaryBarAction()
-            }
-        }
     }
 
     private var compactPlayerContent: some View {
         HStack(spacing: 8) {
-            Button(action: performPrimaryBarAction) {
+            Button(action: { openNowPlaying?() }) {
                 HStack(spacing: 10) {
                     AlbumArtworkView(
                         url: playback.currentSong?.artworkURL,
@@ -180,8 +157,8 @@ struct PlayerBar: View {
 
     @ViewBuilder
     private func songInfoSection(isCompact: Bool) -> some View {
-        if hasPrimaryBarAction {
-            Button(action: performPrimaryBarAction) {
+        if let openNowPlaying {
+            Button(action: openNowPlaying) {
                 songInfoContent(isCompact: isCompact)
             }
             .buttonStyle(.plain)
@@ -201,11 +178,6 @@ struct PlayerBar: View {
                 cornerRadius: 7
             )
             .frame(width: 36, height: 36)
-            .onGeometryChange(for: CGRect.self) { proxy in
-                proxy.frame(in: .named("libraryDetailSpace"))
-            } action: { newFrame in
-                artworkFrame = newFrame
-            }
             .shadow(color: .black.opacity(0.14), radius: 4, x: 0, y: 2)
 
             if !isCompact {
