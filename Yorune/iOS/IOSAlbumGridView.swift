@@ -154,7 +154,7 @@ private struct IOSAlbumCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            AlbumArtworkView(url: album.artworkURL, cornerRadius: 8)
+            AlbumArtworkView(url: album.artworkURL, cornerRadius: 6)
                 .aspectRatio(1, contentMode: .fit)
 
             VStack(alignment: .leading, spacing: 1) {

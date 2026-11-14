@@ -91,7 +91,7 @@ struct IOSAlbumDetailView: View {
 
     private func header(_ songs: [Song]) -> some View {
         VStack(spacing: 0) {
-            AlbumArtworkView(url: album.artworkURL, cornerRadius: 10)
+            AlbumArtworkView(url: album.artworkURL, cornerRadius: 8)
                 .aspectRatio(1, contentMode: .fit)
                 .frame(maxWidth: 280)
                 .padding(.horizontal, 44)

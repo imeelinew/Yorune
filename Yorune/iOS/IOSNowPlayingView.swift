@@ -113,7 +113,7 @@ struct IOSNowPlayingView: View {
 
                 AlbumArtworkView(
                     url: playback.currentSong?.artworkURL,
-                    cornerRadius: isQueueVisible ? 8 : 12
+                    cornerRadius: isQueueVisible ? 6 : 8
                 )
                 .frame(width: currentArtworkSide, height: currentArtworkSide)
                 .scaleEffect(playingScale)
@@ -336,7 +336,7 @@ private struct IOSNowPlayingQueueRow: View {
             action()
         } label: {
             HStack(spacing: 12) {
-                AlbumArtworkView(url: song.artworkURL, cornerRadius: 6)
+                AlbumArtworkView(url: song.artworkURL, cornerRadius: 5)
                     .frame(width: 48, height: 48)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(song.title)
@@ -656,7 +656,7 @@ private struct IOSQueueRow: View {
     var body: some View {
         Button(action: action) {
             HStack {
-                AlbumArtworkView(url: song.artworkURL, cornerRadius: 5)
+                AlbumArtworkView(url: song.artworkURL, cornerRadius: 4)
                     .frame(width: 40, height: 40)
                 VStack(alignment: .leading) {
                     Text(song.title)

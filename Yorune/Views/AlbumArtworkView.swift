@@ -13,6 +13,7 @@ private typealias PlatformImage = UIImage
 struct AlbumArtworkView: View {
     let url: URL?
     let cornerRadius: CGFloat
+    let alignment: Alignment
     private let cacheKey: String?
 
     @State private var image: PlatformImage?
@@ -24,9 +25,14 @@ struct AlbumArtworkView: View {
         return cache
     }()
 
-    init(url: URL?, cornerRadius: CGFloat = 10) {
+    init(
+        url: URL?,
+        cornerRadius: CGFloat = 7,
+        alignment: Alignment = .center
+    ) {
         self.url = url
         self.cornerRadius = cornerRadius
+        self.alignment = alignment
         let cacheKey = url.map(ArtworkCacheKey.value)
         self.cacheKey = cacheKey
         let cachedImage = Self.cachedImage(for: url, cacheKey: cacheKey)
@@ -40,7 +46,7 @@ struct AlbumArtworkView: View {
         // Keep the complete cover visible at its original aspect ratio,
         // while the container owns the layout size.
         Color.clear
-            .overlay {
+            .overlay(alignment: alignment) {
                 if let image {
                     swiftUIImage(image)
                         .resizable()

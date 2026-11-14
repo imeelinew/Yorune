@@ -111,7 +111,7 @@ struct PlayerBar: View {
                 HStack(spacing: 10) {
                     AlbumArtworkView(
                         url: playback.currentSong?.artworkURL,
-                        cornerRadius: 6
+                        cornerRadius: 5
                     )
                     .frame(width: 36, height: 36)
 
@@ -187,7 +187,7 @@ struct PlayerBar: View {
         HStack(spacing: 10) {
             AlbumArtworkView(
                 url: playback.currentSong?.artworkURL,
-                cornerRadius: 7
+                cornerRadius: 5
             )
             .frame(width: 36, height: 36)
             .shadow(color: .black.opacity(0.14), radius: 4, x: 0, y: 2)

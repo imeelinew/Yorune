@@ -304,13 +304,14 @@ struct AlbumDetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         albumHeader(visibleSongs)
+                            .padding(.horizontal, 24)
 
                         trackListSection(visibleSongs)
                     }
                     .padding(.top, 20)
                     .padding(.bottom, 36)
                 }
-                .contentMargins(.horizontal, 28, for: .scrollContent)
+                .contentMargins(.horizontal, 24, for: .scrollContent)
             }
         case .failed:
             VStack(spacing: 16) {
@@ -386,7 +387,7 @@ struct AlbumDetailView: View {
     private func albumHeader(_ songs: [Song]) -> some View {
         let artist = albumArtist(songs)
         return HStack(alignment: .bottom, spacing: 26) {
-            AlbumArtworkView(url: album.artworkURL, cornerRadius: 12)
+            AlbumArtworkView(url: album.artworkURL, cornerRadius: 8)
                 .frame(width: 204, height: 204)
 
             VStack(alignment: .leading, spacing: 6) {
@@ -397,7 +398,7 @@ struct AlbumDetailView: View {
                     .textCase(.uppercase)
 
                 Text(album.title)
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.system(size: 26, weight: .medium))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
 

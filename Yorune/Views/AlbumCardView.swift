@@ -5,12 +5,12 @@ struct AlbumCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
-            AlbumArtworkView(url: album.artworkURL, cornerRadius: 10)
+            AlbumArtworkView(url: album.artworkURL, cornerRadius: 7)
                 .aspectRatio(1, contentMode: .fit)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(album.title)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 

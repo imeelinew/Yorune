@@ -78,57 +78,58 @@ private struct LibraryDetailView: View {
     @State private var searchText = ""
 
     var body: some View {
-        ZStack {
-            libraryContent
-                .opacity(selectedAlbum == nil ? 1 : 0)
-                .allowsHitTesting(selectedAlbum == nil)
-                .accessibilityHidden(selectedAlbum != nil)
+        NavigationStack {
+            ZStack {
+                libraryContent
+                    .opacity(selectedAlbum == nil ? 1 : 0)
+                    .allowsHitTesting(selectedAlbum == nil)
+                    .accessibilityHidden(selectedAlbum != nil)
 
-            if let album = selectedAlbum {
-                let useOfflineSongs = !library.albums.contains(where: { $0.id == album.id })
-                    && downloads.offlineAlbums.contains(where: { $0.id == album.id })
-                AlbumDetailView(
-                    album: album,
-                    downloads: downloads,
-                    playback: playback,
-                    initialSongs: useOfflineSongs
-                        ? downloads.offlineSongs(in: album.id)
-                        : library.cachedSongs(in: album),
-                    songLoader: { album in
-                        if useOfflineSongs {
-                            return downloads.offlineSongs(in: album.id)
+                if let album = selectedAlbum {
+                    let useOfflineSongs = !library.albums.contains(where: { $0.id == album.id })
+                        && downloads.offlineAlbums.contains(where: { $0.id == album.id })
+                    AlbumDetailView(
+                        album: album,
+                        downloads: downloads,
+                        playback: playback,
+                        initialSongs: useOfflineSongs
+                            ? downloads.offlineSongs(in: album.id)
+                            : library.cachedSongs(in: album),
+                        songLoader: { album in
+                            if useOfflineSongs {
+                                return downloads.offlineSongs(in: album.id)
+                            }
+                            return try await library.fetchSongs(in: album)
+                        },
+                        isOfflineLibrary: useOfflineSongs
+                    )
+                    .id(album.id)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background {
+                if let selectedAlbum {
+                    // 详情页唯一的封面晕染背景（原先详情视图内部还叠了一层完全相同
+                    // 的模糊背景，被遮挡却仍然每帧参与渲染）。
+                    AlbumDetailBackground(
+                        url: selectedAlbum.artworkURL,
+                        maxHeight: 480,
+                        lightOpacity: 0.24,
+                        darkOpacity: 0.42
+                    )
+                    .ignoresSafeArea()
+                }
+            }
+            .navigationTitle(selectedAlbum?.title ?? String(localized: "Albums"))
+            .searchable(text: $searchText, placement: .toolbar, prompt: Text("Search Albums"))
+            .toolbar {
+                if selectedAlbum != nil {
+                    ToolbarItem(placement: .navigation) {
+                        Button { selectedAlbum = nil } label: {
+                            Label("Back", systemImage: "chevron.backward")
                         }
-                        return try await library.fetchSongs(in: album)
-                    },
-                    isOfflineLibrary: useOfflineSongs
-                )
-                .id(album.id)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background {
-            if let selectedAlbum {
-                // 详情页唯一的封面晕染背景（原先详情视图内部还叠了一层完全相同
-                // 的模糊背景，被遮挡却仍然每帧参与渲染）。
-                AlbumDetailBackground(
-                    url: selectedAlbum.artworkURL,
-                    maxHeight: 480,
-                    lightOpacity: 0.24,
-                    darkOpacity: 0.42
-                )
-                .ignoresSafeArea()
-            }
-        }
-        .navigationTitle(selectedAlbum?.title ?? String(localized: "Albums"))
-        .toolbarBackgroundVisibility(.hidden, for: .automatic)
-        .searchable(text: $searchText, placement: .toolbar, prompt: Text("Search Albums"))
-        .toolbar {
-            if selectedAlbum != nil {
-                ToolbarItem(placement: .navigation) {
-                    Button { selectedAlbum = nil } label: {
-                        Label("Back", systemImage: "chevron.backward")
+                        .keyboardShortcut("[", modifiers: .command)
                     }
-                    .keyboardShortcut("[", modifiers: .command)
                 }
             }
         }
@@ -680,7 +681,6 @@ private struct WindowLiquidGlassBackground: NSViewRepresentable {
             guard let window else { return }
             window.isOpaque = false
             window.backgroundColor = .clear
-            window.titlebarAppearsTransparent = true
         }
     }
 
