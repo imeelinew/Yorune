@@ -320,9 +320,6 @@ struct AlbumDetailView: View {
     let isOfflineLibrary: Bool
 
     @State private var state: LoadState
-    /// 悬停状态放在独立的 ObservableObject 中：滚动时鼠标不断划过行，
-    /// 若作为 @State 会让整个详情页（头部 + 全部行）反复重绘。
-    @StateObject private var hover = TrackHoverModel()
 
     init(
         album: Album,
@@ -406,10 +403,7 @@ struct AlbumDetailView: View {
                         isCurrent: isCurrent,
                         isPlaying: playback.isPlaying,
                         isDownloaded: downloads.isDownloaded(song.id),
-                        isDownloading: downloads.isDownloading(song.id),
-                        onHoverChange: { [hover] hovering in
-                            hover.setHovering(hovering, songID: song.id)
-                        }
+                        isDownloading: downloads.isDownloading(song.id)
                     ) {
                         playback.play(song, in: visibleSongs)
                     }
@@ -444,13 +438,8 @@ struct AlbumDetailView: View {
                         }
                     }
 
-                    if let nextSongID {
-                        AlbumTrackDivider(
-                            hover: hover,
-                            upperSongID: song.id,
-                            lowerSongID: nextSongID,
-                            forceHidden: isCurrent || nextIsCurrent
-                        )
+                    if nextSongID != nil {
+                        AlbumTrackDivider(hidden: isCurrent || nextIsCurrent)
                     }
                 }
             }
@@ -644,30 +633,10 @@ struct AlbumDetailView: View {
 
 }
 
-@MainActor
-private final class TrackHoverModel: ObservableObject {
-    @Published private(set) var hoveredSongID: String?
-
-    func setHovering(_ hovering: Bool, songID: String) {
-        if hovering {
-            if hoveredSongID != songID { hoveredSongID = songID }
-        } else if hoveredSongID == songID {
-            hoveredSongID = nil
-        }
-    }
-}
-
-/// 只有分隔线订阅悬停状态，悬停变化时仅重绘这些极轻量的视图。
 private struct AlbumTrackDivider: View {
-    @ObservedObject var hover: TrackHoverModel
-    let upperSongID: String
-    let lowerSongID: String
-    let forceHidden: Bool
+    let hidden: Bool
 
     var body: some View {
-        let hidden = forceHidden
-            || hover.hoveredSongID == upperSongID
-            || hover.hoveredSongID == lowerSongID
         Rectangle()
             .fill(Color.primary.opacity(hidden ? 0 : 0.06))
             .frame(height: 0.5)
@@ -678,68 +647,72 @@ private struct AlbumTrackDivider: View {
 
 private struct MacPrimaryCapsuleButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
-    @State private var isHovering = false
 
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
+        let label = configuration.label
             .font(.system(size: 13, weight: .semibold))
             .foregroundStyle(.white)
             .padding(.horizontal, 18)
             .frame(height: 34)
-            .background {
-                Capsule()
-                    .fill(YoruneStyle.accent)
-                    .brightness(configuration.isPressed ? -0.06 : (isHovering ? 0.04 : 0))
-            }
-            .opacity(isEnabled ? 1 : 0.45)
             .contentShape(Capsule())
-            .animation(.easeOut(duration: 0.15), value: isHovering)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-            .onHover { hovering in
-                isHovering = hovering
+
+        Group {
+            if #available(macOS 26.0, *) {
+                label
+                    .glassEffect(.regular.tint(YoruneStyle.accent).interactive(), in: Capsule())
+            } else {
+                label
+                    .background {
+                        Capsule()
+                            .fill(YoruneStyle.accent)
+                            .brightness(configuration.isPressed ? -0.06 : 0)
+                    }
             }
+        }
+        .opacity(isEnabled ? 1 : 0.45)
+        .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
 private struct MacSecondaryCapsuleButtonStyle: ButtonStyle {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.isEnabled) private var isEnabled
-    @State private var isHovering = false
 
     func makeBody(configuration: Configuration) -> some View {
-        let baseOpacity = colorScheme == .dark ? 0.10 : 0.055
-        let hoverOpacity = colorScheme == .dark ? 0.15 : 0.09
-        let pressedOpacity = colorScheme == .dark ? 0.20 : 0.13
-
-        configuration.label
+        let label = configuration.label
             .font(.system(size: 13, weight: .medium))
             .foregroundStyle(.primary)
             .padding(.horizontal, 15)
             .frame(height: 34)
-            .background {
-                Capsule()
-                    .fill(
-                        Color.primary.opacity(
-                            configuration.isPressed
-                                ? pressedOpacity
-                                : (isHovering && isEnabled ? hoverOpacity : baseOpacity)
-                        )
-                    )
-            }
-            .overlay {
-                Capsule()
-                    .strokeBorder(
-                        Color.primary.opacity(colorScheme == .dark ? 0.12 : 0.07),
-                        lineWidth: 0.5
-                    )
-            }
-            .opacity(isEnabled ? 1 : 0.4)
             .contentShape(Capsule())
-            .animation(.easeOut(duration: 0.15), value: isHovering)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-            .onHover { hovering in
-                isHovering = hovering
+
+        Group {
+            if #available(macOS 26.0, *) {
+                label
+                    .glassEffect(.regular.interactive(), in: Capsule())
+            } else {
+                label
+                    .background {
+                        Capsule()
+                            .fill(
+                                Color.primary.opacity(
+                                    configuration.isPressed
+                                        ? (colorScheme == .dark ? 0.20 : 0.13)
+                                        : (colorScheme == .dark ? 0.10 : 0.055)
+                                )
+                            )
+                    }
+                    .overlay {
+                        Capsule()
+                            .strokeBorder(
+                                Color.primary.opacity(colorScheme == .dark ? 0.12 : 0.07),
+                                lineWidth: 0.5
+                            )
+                    }
             }
+        }
+        .opacity(isEnabled ? 1 : 0.4)
+        .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
@@ -751,10 +724,7 @@ private struct AlbumTrackRow: View {
     let isPlaying: Bool
     let isDownloaded: Bool
     let isDownloading: Bool
-    let onHoverChange: (Bool) -> Void
     let play: () -> Void
-
-    @State private var isHovering = false
 
     private var showsArtist: Bool {
         !song.artist.isEmpty && song.artist != albumArtist
@@ -803,20 +773,7 @@ private struct AlbumTrackRow: View {
             .padding(.horizontal, 10)
             .contentShape(Rectangle())
         }
-        .buttonStyle(
-            AlbumTrackRowButtonStyle(
-                isCurrent: isCurrent,
-                isHovering: isHovering
-            )
-        )
-        .onHover { hovering in
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction) {
-                isHovering = hovering
-                onHoverChange(hovering)
-            }
-        }
+        .buttonStyle(AlbumTrackRowButtonStyle(isCurrent: isCurrent))
     }
 
     @ViewBuilder
@@ -827,21 +784,10 @@ private struct AlbumTrackRow: View {
                 .foregroundStyle(YoruneStyle.accent)
                 .symbolEffect(.variableColor.iterative, isActive: isPlaying)
         } else {
-            ZStack(alignment: .trailing) {
-                Text(song.position.isEmpty ? "\(index + 1)" : song.position)
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-                    .opacity(isHovering ? 0 : 1)
-
-                Image(systemName: "play.fill")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .opacity(isHovering ? 1 : 0)
-            }
-            .transaction { transaction in
-                transaction.animation = nil
-            }
+            Text(song.position.isEmpty ? "\(index + 1)" : song.position)
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
         }
     }
 
@@ -854,7 +800,6 @@ private struct AlbumTrackRow: View {
 private struct AlbumTrackRowButtonStyle: ButtonStyle {
     @Environment(\.colorScheme) private var colorScheme
     let isCurrent: Bool
-    let isHovering: Bool
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -862,7 +807,6 @@ private struct AlbumTrackRowButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(backgroundColor(isPressed: configuration.isPressed))
                     .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-                    .animation(.easeOut(duration: 0.12), value: isHovering)
             }
     }
 
@@ -872,9 +816,6 @@ private struct AlbumTrackRowButtonStyle: ButtonStyle {
         }
         if isCurrent {
             return YoruneStyle.accent.opacity(colorScheme == .dark ? 0.14 : 0.075)
-        }
-        if isHovering {
-            return Color.primary.opacity(colorScheme == .dark ? 0.08 : 0.05)
         }
         return .clear
     }
