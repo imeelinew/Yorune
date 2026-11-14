@@ -681,12 +681,6 @@ private struct MacPrimaryCapsuleButtonStyle: ButtonStyle {
                     .fill(YoruneStyle.accent)
                     .brightness(configuration.isPressed ? -0.06 : (isHovering ? 0.04 : 0))
             }
-            .shadow(
-                color: YoruneStyle.accent.opacity(isHovering ? 0.34 : 0.22),
-                radius: isHovering ? 12 : 8,
-                x: 0,
-                y: 4
-            )
             .opacity(isEnabled ? 1 : 0.45)
             .contentShape(Capsule())
             .animation(.easeOut(duration: 0.15), value: isHovering)
