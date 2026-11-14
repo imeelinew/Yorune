@@ -331,61 +331,56 @@ struct AlbumDetailView: View {
         let artist = albumArtist(visibleSongs)
         let currentSongID = playback.currentSong?.id
 
-        return VStack(alignment: .leading, spacing: 16) {
-            LazyVStack(spacing: 0) {
-                ForEach(Array(visibleSongs.enumerated()), id: \.element.id) { index, song in
-                    let isCurrent = currentSongID == song.id
+        return LazyVStack(spacing: 0) {
+            ForEach(Array(visibleSongs.enumerated()), id: \.element.id) { index, song in
+                let isCurrent = currentSongID == song.id
 
-                    AlbumTrackRow(
-                        song: song,
-                        index: index,
-                        albumArtist: artist,
-                        isCurrent: isCurrent,
-                        isPlaying: playback.isPlaying,
-                        isDownloaded: downloads.isDownloaded(song.id),
-                        isDownloading: downloads.isDownloading(song.id)
-                    ) {
-                        playback.play(song, in: visibleSongs)
+                AlbumTrackRow(
+                    song: song,
+                    index: index,
+                    albumArtist: artist,
+                    isCurrent: isCurrent,
+                    isPlaying: playback.isPlaying,
+                    isDownloaded: downloads.isDownloaded(song.id),
+                    isDownloading: downloads.isDownloading(song.id)
+                ) {
+                    playback.play(song, in: visibleSongs)
+                }
+                .contextMenu {
+                    Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") {
+                        playback.playNext(song)
                     }
-                    .contextMenu {
-                        Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") {
-                            playback.playNext(song)
-                        }
-                        Button("Add to Queue", systemImage: "text.badge.plus") {
-                            playback.addToQueue(song)
-                        }
-
-                        Divider()
-
-                        if downloads.isDownloading(song.id) {
-                            Button("Cancel Download", systemImage: "xmark.circle") {
-                                downloads.cancel([song.id])
-                            }
-                        } else if downloads.isDownloaded(song.id) {
-                            Button(
-                                "Remove Download",
-                                systemImage: "trash",
-                                role: .destructive
-                            ) {
-                                downloads.remove([song])
-                            }
-                        } else {
-                            Button {
-                                downloads.download(song)
-                            } label: {
-                                Label("Download", systemImage: "arrow.down.circle")
-                            }
-                        }
+                    Button("Add to Queue", systemImage: "text.badge.plus") {
+                        playback.addToQueue(song)
                     }
 
-                    if index < visibleSongs.count - 1 {
-                        AlbumTrackDivider()
+                    Divider()
+
+                    if downloads.isDownloading(song.id) {
+                        Button("Cancel Download", systemImage: "xmark.circle") {
+                            downloads.cancel([song.id])
+                        }
+                    } else if downloads.isDownloaded(song.id) {
+                        Button(
+                            "Remove Download",
+                            systemImage: "trash",
+                            role: .destructive
+                        ) {
+                            downloads.remove([song])
+                        }
+                    } else {
+                        Button {
+                            downloads.download(song)
+                        } label: {
+                            Label("Download", systemImage: "arrow.down.circle")
+                        }
                     }
                 }
-            }
 
-            albumFooter(visibleSongs)
-                .padding(.horizontal, 12)
+                if index < visibleSongs.count - 1 {
+                    AlbumTrackDivider()
+                }
+            }
         }
     }
 
@@ -426,13 +421,6 @@ struct AlbumDetailView: View {
             }
             .frame(maxWidth: .infinity, minHeight: 204, alignment: .leading)
         }
-    }
-
-    private func albumFooter(_ songs: [Song]) -> some View {
-        let totalMinutes = max(1, Int((songs.reduce(0) { $0 + $1.duration } / 60).rounded()))
-        return Text("\(songs.count) songs, \(totalMinutes) minutes")
-            .font(.system(size: 12))
-            .foregroundStyle(.tertiary)
     }
 
     @ViewBuilder
