@@ -404,8 +404,8 @@ struct AlbumDetailView: View {
 
                 if !artist.isEmpty {
                     Text(artist)
-                        .font(.system(size: 17, weight: .regular))
-                        .foregroundStyle(YoruneStyle.accent.mix(with: .gray, by: 0.25))
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(YoruneStyle.accent)
                         .lineLimit(1)
                         .padding(.top, 1)
                 }
