@@ -374,7 +374,7 @@ private struct IOSQueueRowButtonStyle: ButtonStyle {
 
     private func backgroundColor(isPressed: Bool) -> Color {
         if isCurrent {
-            return Color.primary.opacity(colorScheme == .dark ? 0.08 : 0.05)
+            return YoruneStyle.accent.opacity(colorScheme == .dark ? 0.14 : 0.10)
         }
         if isPressed {
             return Color.primary.opacity(colorScheme == .dark ? 0.14 : 0.09)
@@ -651,11 +651,11 @@ private struct IOSQueueRow: View {
                 VStack(alignment: .leading) {
                     Text(song.title)
                         .font(.body.weight(isCurrent ? .semibold : .regular))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(isCurrent ? YoruneStyle.accent : .primary)
                         .lineLimit(1)
                     Text(song.artist)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(YoruneStyle.accent)
                         .lineLimit(1)
                 }
                 Spacer()

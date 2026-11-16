@@ -333,7 +333,7 @@ private struct IOSSongRow<Actions: View>: View {
                         if isCurrent {
                             Image(systemName: "waveform")
                                 .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(isCurrent ? YoruneStyle.accent : .secondary)
                                 .symbolEffect(.variableColor.iterative, isActive: isPlaying)
                         } else {
                             Text(song.position.isEmpty ? "\(index + 1)" : song.position)
@@ -347,7 +347,7 @@ private struct IOSSongRow<Actions: View>: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(song.title)
                             .font(.body.weight(isCurrent ? .medium : .regular))
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(isCurrent ? YoruneStyle.accent : .primary)
                             .lineLimit(1)
 
                         if showsArtist {
@@ -375,29 +375,29 @@ private struct IOSSongRow<Actions: View>: View {
             }
             .buttonStyle(IOSSongRowButtonStyle())
 
-            Menu {
-                actions()
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.primary)
-                    .frame(width: 36, height: 44)
-                    .contentShape(Rectangle())
-            }
-            .padding(.trailing, 4)
-            .accessibilityLabel("More")
+            Text(formatDuration(song.duration))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+                .frame(width: 44, alignment: .trailing)
+                .padding(.trailing, 10)
         }
         .background {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(
                     isCurrent
-                        ? Color.primary.opacity(colorScheme == .dark ? 0.08 : 0.05)
+                        ? YoruneStyle.accent.opacity(colorScheme == .dark ? 0.14 : 0.075)
                         : .clear
                 )
         }
         .contextMenu {
             actions()
         }
+    }
+
+    private func formatDuration(_ seconds: Double) -> String {
+        let totalSeconds = max(0, Int(seconds.rounded(.down)))
+        return "\(totalSeconds / 60):\(String(format: "%02d", totalSeconds % 60))"
     }
 }
 
