@@ -102,6 +102,7 @@ struct AlbumGridView: View {
                 ProgressView()
                     .controlSize(.small)
                 Text("Syncing Library")
+                    .fixedSize(horizontal: true, vertical: false)
             } else {
                 Image(systemName: pullDistance >= 80 ? "arrow.up" : "arrow.down")
                 Text(pullDistance >= 80 ? "Release to Refresh" : "Pull to Refresh")
@@ -404,7 +405,7 @@ struct AlbumDetailView: View {
 
                 if !artist.isEmpty {
                     Text(artist)
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.system(size: 17, weight: .regular))
                         .foregroundStyle(YoruneStyle.accent)
                         .lineLimit(1)
                         .padding(.top, 1)
