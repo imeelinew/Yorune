@@ -61,8 +61,6 @@ struct IOSAlbumDetailView: View {
             )
             .ignoresSafeArea()
         }
-        .navigationTitle(album.title)
-        .navigationBarTitleDisplayMode(.inline)
         .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
         .task(id: album.id) {
             await load()
@@ -95,7 +93,6 @@ struct IOSAlbumDetailView: View {
                 .aspectRatio(1, contentMode: .fit)
                 .frame(maxWidth: 280)
                 .padding(.horizontal, 44)
-                .shadow(color: .black.opacity(0.22), radius: 18, x: 0, y: 10)
                 .padding(.bottom, 18)
 
             Text(album.title)
@@ -137,33 +134,35 @@ struct IOSAlbumDetailView: View {
     }
 
     private func actionButtons(_ songs: [Song]) -> some View {
-        HStack(spacing: 12) {
-            Button {
-                shufflePlay(songs)
-            } label: {
-                Image(systemName: "shuffle")
-                    .font(.system(size: 16, weight: .semibold))
-            }
-            .buttonStyle(IOSAlbumActionButtonStyle(shape: .circle))
-            .disabled(songs.isEmpty)
-            .accessibilityLabel("Shuffle")
-
-            Button {
-                if let first = songs.first {
-                    if playback.isShuffling {
-                        playback.toggleShuffle()
-                    }
-                    playback.play(first, in: songs)
+        GlassEffectContainer(spacing: 12) {
+            HStack(spacing: 12) {
+                Button {
+                    shufflePlay(songs)
+                } label: {
+                    Image(systemName: "shuffle")
+                        .font(.system(size: 16, weight: .semibold))
                 }
-            } label: {
-                Label("Play", systemImage: "play.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(IOSAlbumActionButtonStyle(shape: .capsule))
-            .disabled(songs.isEmpty)
+                .buttonStyle(IOSAlbumActionButtonStyle(shape: .circle))
+                .disabled(songs.isEmpty)
+                .accessibilityLabel("Shuffle")
 
-            downloadButton(songs)
+                Button {
+                    if let first = songs.first {
+                        if playback.isShuffling {
+                            playback.toggleShuffle()
+                        }
+                        playback.play(first, in: songs)
+                    }
+                } label: {
+                    Label("Play", systemImage: "play.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(IOSAlbumActionButtonStyle(shape: .capsule, isProminent: true))
+                .disabled(songs.isEmpty)
+
+                downloadButton(songs)
+            }
         }
         .frame(maxWidth: 340)
     }
@@ -324,22 +323,11 @@ private struct IOSSongRow<Actions: View>: View {
     let isDownloading: Bool
     let play: () -> Void
     @ViewBuilder let actions: () -> Actions
-
-    @State private var isPressed = false
-    @State private var isTapHighlighted = false
-    @State private var tapFeedbackCount = 0
-    @State private var highlightTask: Task<Void, Never>?
-
-    private var isHighlighted: Bool {
-        isPressed || isTapHighlighted
-    }
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         HStack(spacing: 0) {
-            Button {
-                triggerTapHighlight()
-                play()
-            } label: {
+            Button(action: play) {
                 HStack(spacing: 12) {
                     Group {
                         if isCurrent {
@@ -347,17 +335,14 @@ private struct IOSSongRow<Actions: View>: View {
                                 .font(.system(size: 15, weight: .medium))
                                 .foregroundStyle(YoruneStyle.accent)
                                 .symbolEffect(.variableColor.iterative, isActive: isPlaying)
-                                .transition(.scale(scale: 0.5))
                         } else {
                             Text(song.position.isEmpty ? "\(index + 1)" : song.position)
                                 .font(.body)
                                 .foregroundStyle(.secondary)
                                 .monospacedDigit()
-                                .transition(.scale(scale: 0.5))
                         }
                     }
                     .frame(width: 24, alignment: .center)
-                    .animation(.spring(response: 0.28, dampingFraction: 0.72), value: isCurrent)
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(song.title)
@@ -388,7 +373,7 @@ private struct IOSSongRow<Actions: View>: View {
                 .padding(.leading, 10)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(IOSSongRowPressTrackerStyle(isPressed: $isPressed))
+            .buttonStyle(IOSSongRowButtonStyle())
 
             Menu {
                 actions()
@@ -404,63 +389,30 @@ private struct IOSSongRow<Actions: View>: View {
         }
         .background {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(rowBackgroundColor)
+                .fill(
+                    isCurrent
+                        ? YoruneStyle.accent.opacity(colorScheme == .dark ? 0.14 : 0.075)
+                        : .clear
+                )
         }
-        .scaleEffect(isHighlighted ? 0.985 : 1)
-        .animation(.spring(response: 0.24, dampingFraction: 0.76), value: isHighlighted)
-        .animation(.spring(response: 0.3, dampingFraction: 0.82), value: isCurrent)
-        .sensoryFeedback(.selection, trigger: tapFeedbackCount)
         .contextMenu {
             actions()
         }
-        .onDisappear {
-            highlightTask?.cancel()
-            highlightTask = nil
-            isTapHighlighted = false
-            isPressed = false
-        }
-    }
-
-    private var rowBackgroundColor: Color {
-        if isHighlighted {
-            return Color(uiColor: .secondarySystemFill)
-        }
-        if isCurrent {
-            return Color(uiColor: .tertiarySystemFill).opacity(0.75)
-        }
-        return .clear
-    }
-
-    private func triggerTapHighlight() {
-        tapFeedbackCount &+= 1
-        highlightTask?.cancel()
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            isTapHighlighted = true
-        }
-        highlightTask = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(180))
-            guard !Task.isCancelled else { return }
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
-                isTapHighlighted = false
-            }
-        }
     }
 }
 
-private struct IOSSongRowPressTrackerStyle: ButtonStyle {
-    @Binding var isPressed: Bool
-
+private struct IOSSongRowButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .onChange(of: configuration.isPressed) { _, pressed in
-                isPressed = pressed
+            .background {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.primary.opacity(configuration.isPressed ? 0.09 : 0))
             }
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
-/// 专辑页操作按钮：浅灰底 + 主题色前景，不使用 Liquid Glass。
+/// 专辑页操作按钮：与 macOS 专辑页保持一致的 Liquid Glass 按钮。
 private struct IOSAlbumActionButtonStyle: ButtonStyle {
     enum Shape {
         case circle
@@ -468,24 +420,38 @@ private struct IOSAlbumActionButtonStyle: ButtonStyle {
     }
 
     let shape: Shape
+    var isProminent = false
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(YoruneStyle.accent)
+        let glassShape = shape == .circle ? AnyShape(Circle()) : AnyShape(Capsule())
+        let label = configuration.label
+            .foregroundStyle(isProminent ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
             .frame(width: shape == .circle ? 44 : nil, height: 44)
             .frame(maxWidth: shape == .capsule ? .infinity : nil)
-            .background {
-                switch shape {
-                case .circle:
-                    Circle().fill(Color(uiColor: .secondarySystemFill))
-                case .capsule:
-                    Capsule().fill(Color(uiColor: .secondarySystemFill))
-                }
+            .contentShape(glassShape)
+
+        Group {
+            if #available(iOS 26.0, *) {
+                label
+                    .glassEffect(
+                        isProminent
+                            ? .regular.tint(YoruneStyle.accent).interactive()
+                            : .regular.interactive(),
+                        in: glassShape
+                    )
+            } else {
+                label
+                    .background {
+                        if isProminent {
+                            glassShape.fill(YoruneStyle.accent)
+                        } else {
+                            glassShape.fill(.ultraThinMaterial)
+                        }
+                    }
             }
-            .contentShape(shape == .circle ? AnyShape(Circle()) : AnyShape(Capsule()))
-            .opacity(isEnabled ? 1 : 0.4)
-            .scaleEffect(configuration.isPressed ? 0.94 : 1)
-            .animation(.spring(response: 0.24, dampingFraction: 0.68), value: configuration.isPressed)
+        }
+        .opacity(isEnabled ? 1 : 0.4)
+        .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

@@ -327,14 +327,10 @@ private struct IOSNowPlayingQueueRow: View {
     let song: Song
     let action: () -> Void
 
-    @State private var isTapHighlighted = false
-    @State private var highlightTask: Task<Void, Never>?
+    @State private var isHovering = false
 
     var body: some View {
-        Button {
-            triggerTapHighlight()
-            action()
-        } label: {
+        Button(action: action) {
             HStack(spacing: 12) {
                 AlbumArtworkView(url: song.artworkURL, cornerRadius: 5)
                     .frame(width: 48, height: 48)
@@ -354,43 +350,39 @@ private struct IOSNowPlayingQueueRow: View {
             .padding(.vertical, 4)
             .contentShape(Rectangle())
         }
-        .buttonStyle(IOSQueueRowPressStyle(isTapHighlighted: isTapHighlighted))
-        .onDisappear {
-            highlightTask?.cancel()
-            highlightTask = nil
-            isTapHighlighted = false
-        }
-    }
-
-    private func triggerTapHighlight() {
-        highlightTask?.cancel()
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            isTapHighlighted = true
-        }
-        highlightTask = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(160))
-            guard !Task.isCancelled else { return }
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
-                isTapHighlighted = false
-            }
+        .buttonStyle(IOSQueueRowButtonStyle(isCurrent: false, isHovering: isHovering))
+        .onHover { hovering in
+            isHovering = hovering
         }
     }
 }
 
-private struct IOSQueueRowPressStyle: ButtonStyle {
-    let isTapHighlighted: Bool
+private struct IOSQueueRowButtonStyle: ButtonStyle {
+    let isCurrent: Bool
+    let isHovering: Bool
+    @Environment(\.colorScheme) private var colorScheme
 
     func makeBody(configuration: Configuration) -> some View {
-        let isActive = configuration.isPressed || isTapHighlighted
         configuration.label
             .background {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(.white.opacity(isActive ? 0.16 : 0))
+                    .fill(backgroundColor(isPressed: configuration.isPressed))
             }
-            .scaleEffect(isActive ? 0.985 : 1)
-            .animation(.spring(response: 0.24, dampingFraction: 0.78), value: isActive)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(.easeOut(duration: 0.12), value: isHovering)
+    }
+
+    private func backgroundColor(isPressed: Bool) -> Color {
+        if isCurrent {
+            return YoruneStyle.accent.opacity(colorScheme == .dark ? 0.14 : 0.10)
+        }
+        if isPressed {
+            return Color.primary.opacity(colorScheme == .dark ? 0.14 : 0.09)
+        }
+        if isHovering {
+            return Color.primary.opacity(colorScheme == .dark ? 0.08 : 0.05)
+        }
+        return .clear
     }
 }
 
@@ -587,17 +579,14 @@ private struct IOSNowPlayingActionButton: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.system(size: 20, weight: .medium))
-                .foregroundStyle(isActive ? .white : .white.opacity(0.65))
+                .foregroundStyle(isActive ? YoruneStyle.accent : .white.opacity(0.65))
                 .contentTransition(.symbolEffect(.replace))
-                .symbolEffect(.bounce, value: isActive)
-                .scaleEffect(isActive ? 1.06 : 1)
                 .frame(width: 44, height: 44)
                 .background {
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(.white.opacity(0.22))
-                        .scaleEffect(isActive ? 1 : 0.001)
+                        .fill(.white.opacity(isActive ? 0.06 : 0))
                 }
-                .animation(.spring(response: 0.32, dampingFraction: 0.65), value: isActive)
+                .animation(.easeOut(duration: 0.12), value: isActive)
                 .contentShape(Rectangle())
         }
         .buttonStyle(IOSTransportButtonStyle())
@@ -652,6 +641,7 @@ private struct IOSQueueRow: View {
     let song: Song
     let isCurrent: Bool
     let action: () -> Void
+    @State private var isHovering = false
 
     var body: some View {
         Button(action: action) {
@@ -660,6 +650,8 @@ private struct IOSQueueRow: View {
                     .frame(width: 40, height: 40)
                 VStack(alignment: .leading) {
                     Text(song.title)
+                        .font(.body.weight(isCurrent ? .semibold : .regular))
+                        .foregroundStyle(isCurrent ? YoruneStyle.accent : .primary)
                         .lineLimit(1)
                     Text(song.artist)
                         .font(.subheadline)
@@ -673,7 +665,10 @@ private struct IOSQueueRow: View {
                 }
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(IOSQueueRowButtonStyle(isCurrent: isCurrent, isHovering: isHovering))
+        .onHover { hovering in
+            isHovering = hovering
+        }
     }
 }
 
@@ -783,6 +778,9 @@ struct IOSSystemVolumeSlider: View {
         .onDisappear {
             resetInteraction()
         }
+        .onAppear {
+            bridge.refresh()
+        }
     }
 
     private func volumeFraction(translation: CGFloat, width: CGFloat) -> Double {
@@ -817,16 +815,25 @@ private final class IOSSystemVolumeBridge: ObservableObject {
     }
 
     func attach(slider: UISlider?) {
-        guard self.slider !== slider else { return }
-        self.slider = slider
-        sliderCancellable = slider?
-            .publisher(for: \.value)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] newValue in
-                self?.acceptExternalVolume(Double(newValue))
-            }
-        let sessionVolume = Double(AVAudioSession.sharedInstance().outputVolume)
-        volume = min(max(sessionVolume, 0), 1)
+        if self.slider !== slider {
+            self.slider = slider
+            sliderCancellable = slider?
+                .publisher(for: \.value)
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] newValue in
+                    self?.acceptExternalVolume(Double(newValue))
+                }
+        }
+        refresh()
+    }
+
+    func refresh() {
+        let current = slider.map { Double($0.value) }
+            ?? Double(AVAudioSession.sharedInstance().outputVolume)
+        let clamped = min(max(current, 0), 1)
+        if abs(clamped - volume) > 0.001 {
+            volume = clamped
+        }
     }
 
     func setVolume(_ value: Double) {

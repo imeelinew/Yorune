@@ -308,6 +308,9 @@ struct AlbumDetailView: View {
                             .padding(.horizontal, 24)
 
                         trackListSection(visibleSongs)
+
+                        albumFooter(visibleSongs)
+                            .padding(.horizontal, 12)
                     }
                     .padding(.top, 20)
                     .padding(.bottom, 36)
@@ -410,11 +413,6 @@ struct AlbumDetailView: View {
                         .lineLimit(1)
                         .padding(.top, 1)
                 }
-
-                Text(albumMetadata(songs))
-                    .font(.system(size: 12.5, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 4)
 
                 Spacer(minLength: 20)
 
@@ -543,6 +541,13 @@ struct AlbumDetailView: View {
             parts.append(String(localized: "\(songs.count) songs, \(totalMinutes) minutes"))
         }
         return parts.joined(separator: " · ")
+    }
+
+    private func albumFooter(_ songs: [Song]) -> some View {
+        let totalMinutes = max(1, Int((songs.reduce(0) { $0 + $1.duration } / 60).rounded()))
+        return Text("\(songs.count) songs, \(totalMinutes) minutes")
+            .font(.system(size: 12))
+            .foregroundStyle(.tertiary)
     }
 
     private func loadSongs() async {
