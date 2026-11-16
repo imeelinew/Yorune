@@ -713,6 +713,7 @@
       }
     },
     "More" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -983,6 +984,9 @@
           }
         }
       }
+    },
+    "Paused" : {
+
     },
     "Play" : {
       "localizations" : {

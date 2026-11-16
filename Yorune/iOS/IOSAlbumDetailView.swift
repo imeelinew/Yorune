@@ -218,7 +218,6 @@ struct IOSAlbumDetailView: View {
         return LazyVStack(spacing: 0) {
             ForEach(Array(songs.enumerated()), id: \.element.id) { index, song in
                 let isCurrent = currentSongID == song.id
-                let nextIsCurrent = index + 1 < songs.count && songs[index + 1].id == currentSongID
 
                 IOSSongRow(
                     song: song,
@@ -240,7 +239,6 @@ struct IOSAlbumDetailView: View {
                     Divider()
                         .padding(.leading, 46)
                         .padding(.trailing, 10)
-                        .opacity(isCurrent || nextIsCurrent ? 0 : 1)
                 }
             }
         }
@@ -323,75 +321,66 @@ private struct IOSSongRow<Actions: View>: View {
     let isDownloading: Bool
     let play: () -> Void
     @ViewBuilder let actions: () -> Actions
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        HStack(spacing: 0) {
-            Button(action: play) {
-                HStack(spacing: 12) {
-                    Group {
-                        if isCurrent {
-                            Image(systemName: "waveform")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(isCurrent ? YoruneStyle.accent : .secondary)
-                                .symbolEffect(.variableColor.iterative, isActive: isPlaying)
-                        } else {
-                            Text(song.position.isEmpty ? "\(index + 1)" : song.position)
-                                .font(.body)
-                                .foregroundStyle(.secondary)
-                                .monospacedDigit()
-                        }
-                    }
+        Button(action: play) {
+            HStack(spacing: 12) {
+                leadingIndicator
                     .frame(width: 24, alignment: .center)
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(song.title)
-                            .font(.body.weight(isCurrent ? .medium : .regular))
-                            .foregroundStyle(isCurrent ? YoruneStyle.accent : .primary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(song.title)
+                        .font(.body)
+                        .foregroundStyle(isCurrent ? YoruneStyle.accent : Color.primary)
+                        .lineLimit(1)
+
+                    if showsArtist {
+                        Text(song.artist)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                             .lineLimit(1)
-
-                        if showsArtist {
-                            Text(song.artist)
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    if isDownloading {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else if isDownloaded {
-                        Image(systemName: "arrow.down.circle.fill")
-                            .font(.system(size: 13))
-                            .foregroundStyle(.tertiary)
-                            .accessibilityLabel("Downloaded")
                     }
                 }
-                .padding(.vertical, 13)
-                .padding(.leading, 10)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(IOSSongRowButtonStyle())
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            Text(formatDuration(song.duration))
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-                .frame(width: 44, alignment: .trailing)
-                .padding(.trailing, 10)
+                if isDownloading {
+                    ProgressView()
+                        .controlSize(.small)
+                } else if isDownloaded {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.tertiary)
+                        .accessibilityLabel("Downloaded")
+                }
+
+                Text(formatDuration(song.duration))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .frame(width: 44, alignment: .trailing)
+            }
+            .padding(.vertical, 13)
+            .padding(.horizontal, 10)
+            .contentShape(Rectangle())
         }
-        .background {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(
-                    isCurrent
-                        ? YoruneStyle.accent.opacity(colorScheme == .dark ? 0.14 : 0.075)
-                        : .clear
-                )
-        }
+        .buttonStyle(IOSSongRowButtonStyle())
         .contextMenu {
             actions()
+        }
+    }
+
+    @ViewBuilder
+    private var leadingIndicator: some View {
+        if isCurrent {
+            Image(systemName: isPlaying ? "speaker.wave.2.fill" : "speaker.fill")
+                .font(.system(size: 13))
+                .foregroundStyle(YoruneStyle.accent)
+                .accessibilityLabel(isPlaying ? "Now Playing" : "Paused")
+        } else {
+            Text(song.position.isEmpty ? "\(index + 1)" : song.position)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
         }
     }
 
@@ -402,13 +391,22 @@ private struct IOSSongRow<Actions: View>: View {
 }
 
 private struct IOSSongRowButtonStyle: ButtonStyle {
+    @Environment(\.colorScheme) private var colorScheme
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .background {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.primary.opacity(configuration.isPressed ? 0.09 : 0))
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(backgroundColor(isPressed: configuration.isPressed))
+                    .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
             }
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+
+    private func backgroundColor(isPressed: Bool) -> Color {
+        if isPressed {
+            return Color.primary.opacity(colorScheme == .dark ? 0.14 : 0.09)
+        }
+        return .clear
     }
 }
 
