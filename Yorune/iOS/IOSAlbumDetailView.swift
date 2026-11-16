@@ -158,7 +158,7 @@ struct IOSAlbumDetailView: View {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(IOSAlbumActionButtonStyle(shape: .capsule, isProminent: true))
+                .buttonStyle(IOSAlbumActionButtonStyle(shape: .capsule))
                 .disabled(songs.isEmpty)
 
                 downloadButton(songs)
@@ -333,7 +333,7 @@ private struct IOSSongRow<Actions: View>: View {
                         if isCurrent {
                             Image(systemName: "waveform")
                                 .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(YoruneStyle.accent)
+                                .foregroundStyle(.secondary)
                                 .symbolEffect(.variableColor.iterative, isActive: isPlaying)
                         } else {
                             Text(song.position.isEmpty ? "\(index + 1)" : song.position)
@@ -347,7 +347,7 @@ private struct IOSSongRow<Actions: View>: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(song.title)
                             .font(.body.weight(isCurrent ? .medium : .regular))
-                            .foregroundStyle(isCurrent ? YoruneStyle.accent : .primary)
+                            .foregroundStyle(.primary)
                             .lineLimit(1)
 
                         if showsArtist {
@@ -391,7 +391,7 @@ private struct IOSSongRow<Actions: View>: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(
                     isCurrent
-                        ? YoruneStyle.accent.opacity(colorScheme == .dark ? 0.14 : 0.075)
+                        ? Color.primary.opacity(colorScheme == .dark ? 0.08 : 0.05)
                         : .clear
                 )
         }
@@ -420,13 +420,12 @@ private struct IOSAlbumActionButtonStyle: ButtonStyle {
     }
 
     let shape: Shape
-    var isProminent = false
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         let glassShape = shape == .circle ? AnyShape(Circle()) : AnyShape(Capsule())
         let label = configuration.label
-            .foregroundStyle(isProminent ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+            .foregroundStyle(.primary)
             .frame(width: shape == .circle ? 44 : nil, height: 44)
             .frame(maxWidth: shape == .capsule ? .infinity : nil)
             .contentShape(glassShape)
@@ -435,19 +434,13 @@ private struct IOSAlbumActionButtonStyle: ButtonStyle {
             if #available(iOS 26.0, *) {
                 label
                     .glassEffect(
-                        isProminent
-                            ? .regular.tint(YoruneStyle.accent).interactive()
-                            : .regular.interactive(),
+                        .regular.interactive(),
                         in: glassShape
                     )
             } else {
                 label
                     .background {
-                        if isProminent {
-                            glassShape.fill(YoruneStyle.accent)
-                        } else {
-                            glassShape.fill(.ultraThinMaterial)
-                        }
+                        glassShape.fill(.ultraThinMaterial)
                     }
             }
         }
