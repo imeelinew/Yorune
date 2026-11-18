@@ -307,7 +307,11 @@ struct PlayerBar: View {
                 .disabled(playback.currentSong == nil)
 
             PlayerBarIconButton(
-                action: playback.toggleQueueInspector,
+                action: {
+                    withAnimation(.queueSidebar) {
+                        playback.toggleQueueInspector()
+                    }
+                },
                 isSelected: playback.isQueuePresented,
                 accessibilityLabel: "Queue"
             ) {
@@ -835,3 +839,8 @@ struct AirPlayRoutePicker: UIViewRepresentable {
     func updateUIView(_ uiView: AVRoutePickerView, context: Context) {}
 }
 #endif
+
+extension Animation {
+    /// 播放队列侧边栏展开 / 收起动画。
+    static let queueSidebar = Animation.spring(response: 0.34, dampingFraction: 0.9)
+}

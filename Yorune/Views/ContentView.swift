@@ -31,13 +31,18 @@ private struct LibraryWindowView: View {
     let openSettings: () -> Void
 
     var body: some View {
-        PlaybackQueueSidebarHost(playback: playback) {
+        // 侧边栏列是独立的叶子视图：只有它观察 PlaybackController，
+        // 播放状态变化时不会连带重建 LibraryDetailView / 专辑墙。
+        HStack(spacing: 0) {
             LibraryDetailView(
                 library: library,
                 downloads: downloads,
                 playback: playback,
                 openSettings: openSettings
             )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            PlaybackQueueSidebarColumn(playback: playback)
         }
         .background {
             WindowLiquidGlassBackground()
@@ -48,25 +53,20 @@ private struct LibraryWindowView: View {
 
 /// 播放队列以贴靠窗口右缘的浮动玻璃侧边栏呈现：展开时挤压主内容而非覆盖，
 /// 可通过播放栏的队列按钮或侧边栏右上角的关闭按钮随时收起。
-private struct PlaybackQueueSidebarHost<Content: View>: View {
+/// 展开 / 收起动画由调用处的 `withAnimation(.queueSidebar)` 驱动，
+/// 以便主内容的宽度变化与侧边栏滑入处于同一事务。
+private struct PlaybackQueueSidebarColumn: View {
     @ObservedObject var playback: PlaybackController
-    @ViewBuilder let content: Content
 
     var body: some View {
-        HStack(spacing: 0) {
-            content
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            if playback.isQueuePresented {
-                PlaybackQueueSidebar(playback: playback)
-                    .frame(width: 300)
-                    .padding(.top, 6)
-                    .padding(.trailing, 10)
-                    .padding(.bottom, 10)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
-            }
+        if playback.isQueuePresented {
+            PlaybackQueueSidebar(playback: playback)
+                .frame(width: 300)
+                .padding(.top, 6)
+                .padding(.trailing, 10)
+                .padding(.bottom, 10)
+                .transition(.move(edge: .trailing).combined(with: .opacity))
         }
-        .animation(.spring(response: 0.34, dampingFraction: 0.9), value: playback.isQueuePresented)
     }
 }
 
@@ -307,8 +307,9 @@ private struct PlaybackQueueSidebar: View {
     private let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
 
     var body: some View {
+        // 不再叠加外部大半径阴影：玻璃自带层次，且阴影会让侧边栏在专辑墙
+        // 滚动时每帧都参与离屏合成。
         surface
-            .shadow(color: .black.opacity(0.10), radius: 18, x: 0, y: 6)
     }
 
     @ViewBuilder
@@ -374,7 +375,9 @@ private struct PlaybackQueueSidebar: View {
             Spacer()
 
             Button {
-                playback.toggleQueueInspector()
+                withAnimation(.queueSidebar) {
+                    playback.toggleQueueInspector()
+                }
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 10, weight: .bold))
@@ -487,7 +490,6 @@ private struct NowPlayingQueueCard: View {
         HStack(spacing: 12) {
             AlbumArtworkView(url: song.artworkURL, cornerRadius: 8)
                 .frame(width: 56, height: 56)
-                .shadow(color: .black.opacity(0.18), radius: 6, x: 0, y: 3)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(song.title)
@@ -507,10 +509,10 @@ private struct NowPlayingQueueCard: View {
 
             Spacer(minLength: 0)
 
-            Image(systemName: "waveform")
-                .font(.system(size: 13, weight: .semibold))
+            // 静态指示：循环符号动画会让玻璃区域持续重绘，拖慢旁边专辑墙的滚动。
+            Image(systemName: isPlaying ? "speaker.wave.2.fill" : "speaker.fill")
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(isPlaying ? AnyShapeStyle(YoruneStyle.accent) : AnyShapeStyle(.tertiary))
-                .symbolEffect(.variableColor.iterative, options: .repeating, isActive: isPlaying)
         }
         .padding(10)
         .background(
