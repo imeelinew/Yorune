@@ -31,15 +31,13 @@ private struct LibraryWindowView: View {
     let openSettings: () -> Void
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
+        PlaybackQueueSidebarHost(playback: playback) {
             LibraryDetailView(
                 library: library,
                 downloads: downloads,
                 playback: playback,
                 openSettings: openSettings
             )
-
-            PlaybackQueueHost(playback: playback)
         }
         .background {
             WindowLiquidGlassBackground()
@@ -48,24 +46,29 @@ private struct LibraryWindowView: View {
     }
 }
 
-private struct PlaybackQueueHost: View {
+/// 播放队列以右侧边栏（inspector）的形式贴靠窗口右缘，挤压主内容而非悬浮覆盖，
+/// 可通过播放栏的队列按钮随时展开 / 收起，也可拖动分隔线调整宽度。
+private struct PlaybackQueueSidebarHost<Content: View>: View {
     @ObservedObject var playback: PlaybackController
+    @ViewBuilder let content: Content
 
     var body: some View {
-        Group {
-            if playback.isQueuePresented {
+        content
+            .inspector(isPresented: isPresented) {
                 PlaybackQueuePanel(playback: playback)
-                    .frame(maxHeight: .infinity)
-                    .padding(.top, 12)
-                    .padding(.trailing, 18)
-                    .padding(.bottom, 76)
-                    .transition(
-                        .move(edge: .trailing)
-                            .combined(with: .scale(scale: 0.96, anchor: .bottomTrailing))
-                    )
+                    .inspectorColumnWidth(min: 260, ideal: 300, max: 420)
             }
-        }
-        .animation(.spring(response: 0.28, dampingFraction: 0.92), value: playback.isQueuePresented)
+    }
+
+    private var isPresented: Binding<Bool> {
+        Binding(
+            get: { playback.isQueuePresented },
+            set: { newValue in
+                if newValue != playback.isQueuePresented {
+                    playback.toggleQueueInspector()
+                }
+            }
+        )
     }
 }
 
@@ -301,115 +304,38 @@ private struct PlaybackKeyboardShortcutMonitor: NSViewRepresentable {
 
 private struct PlaybackQueuePanel: View {
     @ObservedObject var playback: PlaybackController
-    @State private var isEditing = false
 
     var body: some View {
-        panelSurface
-            .shadow(color: .black.opacity(0.14), radius: 20, x: 0, y: 8)
-            .animation(.spring(response: 0.28, dampingFraction: 0.92), value: isEditing)
-    }
-
-    @ViewBuilder
-    private var panelSurface: some View {
-        if #available(macOS 26.0, *), !isEditing {
-            panelBody
-                .glassEffect(
-                    .regular.interactive(),
-                    in: RoundedRectangle(cornerRadius: 20, style: .continuous)
-                )
-        } else {
-            panelBody
-                .background(
-                    isEditing ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.ultraThinMaterial),
-                    in: RoundedRectangle(cornerRadius: 20, style: .continuous)
-                )
-        }
-    }
-
-    private var panelBody: some View {
         VStack(spacing: 0) {
-            if isEditing {
-                editingHeader
-            } else {
-                compactHeader
-            }
+            header
 
             Divider()
                 .opacity(0.3)
 
-            queueContent(isEditing: isEditing)
-
-            if isEditing {
-                Divider()
-                    .opacity(0.3)
-                    .transition(.move(edge: .bottom))
-
-                queueFooter
-                    .transition(.move(edge: .bottom).combined(with: .scale(scale: 0.95, anchor: .bottom)))
-            }
+            queueContent
         }
-        .frame(width: isEditing ? 400 : 280)
-        .frame(maxHeight: .infinity)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var compactHeader: some View {
+    private var header: some View {
         HStack {
             Text("Up Next")
                 .font(.headline)
 
             Spacer()
 
-            if !playback.upcomingSongs.isEmpty {
-                Button {
-                    playback.clearUpcoming()
-                } label: {
-                    Text("Clear")
-                        .font(.subheadline)
-                        .foregroundStyle(.red)
-                }
-                .buttonStyle(.plain)
-            }
-
-            Button {
-                isEditing = true
-            } label: {
-                Label("Edit", systemImage: "square.and.pencil")
-                    .font(.system(size: 12))
+            if !playback.queue.isEmpty {
+                Text("\(playback.queue.count) songs")
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-    }
-
-    private var editingHeader: some View {
-        HStack {
-            Text("Up Next")
-                .font(.headline)
-
-            Spacer()
-
-            Text("\(playback.queue.count) songs")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            Button {
-                isEditing = false
-            } label: {
-                Label("Done", systemImage: "checkmark")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
     }
 
     @ViewBuilder
-    private func queueContent(isEditing: Bool) -> some View {
+    private var queueContent: some View {
         if playback.queue.isEmpty {
             VStack(spacing: 12) {
                 Image(systemName: "list.bullet")
@@ -431,82 +357,23 @@ private struct PlaybackQueuePanel: View {
             ScrollView {
                 LazyVStack(spacing: 0) {
                     ForEach(Array(playback.queue.enumerated()), id: \.element.id) { index, song in
-                        queueRow(
-                            song,
+                        PlaybackQueueRow(
+                            song: song,
                             index: index,
-                            isEditing: isEditing
+                            isCurrent: playback.currentSong?.id == song.id,
+                            isPlaying: playback.isPlaying,
+                            play: {
+                                playback.playQueuedSong(song)
+                            },
+                            remove: {
+                                playback.removeFromQueue(song)
+                            }
                         )
                     }
                 }
                 .padding(.vertical, 8)
             }
         }
-    }
-
-    @ViewBuilder
-    private func queueRow(_ song: Song, index: Int, isEditing: Bool) -> some View {
-        let row = PlaybackQueueRow(
-            song: song,
-            index: index,
-            isCurrent: playback.currentSong?.id == song.id,
-            isPlaying: playback.isPlaying,
-            play: {
-                playback.playQueuedSong(song)
-            },
-            remove: {
-                playback.removeFromQueue(song)
-            }
-        )
-
-        if isEditing, isUpcoming(song) {
-            row
-                .draggable(song.id)
-                .dropDestination(for: String.self) { songIDs, location in
-                    guard let songID = songIDs.first else { return false }
-                    playback.moveQueuedSong(
-                        songID,
-                        relativeTo: song.id,
-                        placeAfter: location.y > 28
-                    )
-                    return true
-                }
-        } else {
-            row
-        }
-    }
-
-    private var queueFooter: some View {
-        HStack(spacing: 0) {
-            QueueFooterIconButton(
-                systemImage: "shuffle",
-                accessibilityLabel: "Shuffle",
-                isEnabled: !playback.upcomingSongs.isEmpty,
-                isSelected: playback.isShuffling
-            ) {
-                playback.toggleShuffle()
-            }
-
-            Spacer()
-
-            QueueFooterIconButton(
-                systemImage: "trash",
-                accessibilityLabel: "Clear Queue",
-                isEnabled: !playback.queue.isEmpty,
-                tint: .red
-            ) {
-                playback.stopAndClearQueue()
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-    }
-
-    private func isUpcoming(_ song: Song) -> Bool {
-        guard let currentSong = playback.currentSong,
-              let currentIndex = playback.queue.firstIndex(where: { $0.id == currentSong.id }),
-              let songIndex = playback.queue.firstIndex(where: { $0.id == song.id })
-        else { return false }
-        return songIndex > currentIndex
     }
 }
 
@@ -606,32 +473,6 @@ private struct PlaybackQueueRow: View {
     private func formatDuration(_ seconds: Double) -> String {
         let totalSeconds = max(0, Int(seconds.rounded(.down)))
         return "\(totalSeconds / 60):\(String(format: "%02d", totalSeconds % 60))"
-    }
-}
-
-private struct QueueFooterIconButton: View {
-    let systemImage: String
-    let accessibilityLabel: LocalizedStringKey
-    var isEnabled = true
-    var isSelected = false
-    var tint: Color = .secondary
-    let action: () -> Void
-
-    var body: some View {
-        Button {
-            guard isEnabled else { return }
-            action()
-        } label: {
-            Image(systemName: systemImage)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(isSelected ? YoruneStyle.accent : tint)
-                .frame(width: 20, height: 20)
-        }
-        .buttonStyle(.plain)
-        .disabled(!isEnabled)
-        .opacity(isEnabled ? 1 : 0.45)
-        .help(Text(accessibilityLabel))
-        .accessibilityLabel(Text(accessibilityLabel))
     }
 }
 
