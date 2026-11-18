@@ -184,6 +184,38 @@
         }
       }
     },
+    "Hide Queue" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐藏播放队列"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隱藏播放佇列"
+          }
+        }
+      }
+    },
+    "Played" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已播放"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已播放"
+          }
+        }
+      }
+    },
     "album.year" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {

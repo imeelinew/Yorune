@@ -46,29 +46,27 @@ private struct LibraryWindowView: View {
     }
 }
 
-/// 播放队列以右侧边栏（inspector）的形式贴靠窗口右缘，挤压主内容而非悬浮覆盖，
-/// 可通过播放栏的队列按钮随时展开 / 收起，也可拖动分隔线调整宽度。
+/// 播放队列以贴靠窗口右缘的浮动玻璃侧边栏呈现：展开时挤压主内容而非覆盖，
+/// 可通过播放栏的队列按钮或侧边栏右上角的关闭按钮随时收起。
 private struct PlaybackQueueSidebarHost<Content: View>: View {
     @ObservedObject var playback: PlaybackController
     @ViewBuilder let content: Content
 
     var body: some View {
-        content
-            .inspector(isPresented: isPresented) {
-                PlaybackQueuePanel(playback: playback)
-                    .inspectorColumnWidth(min: 260, ideal: 300, max: 420)
-            }
-    }
+        HStack(spacing: 0) {
+            content
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-    private var isPresented: Binding<Bool> {
-        Binding(
-            get: { playback.isQueuePresented },
-            set: { newValue in
-                if newValue != playback.isQueuePresented {
-                    playback.toggleQueueInspector()
-                }
+            if playback.isQueuePresented {
+                PlaybackQueueSidebar(playback: playback)
+                    .frame(width: 300)
+                    .padding(.top, 6)
+                    .padding(.trailing, 10)
+                    .padding(.bottom, 10)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
             }
-        )
+        }
+        .animation(.spring(response: 0.34, dampingFraction: 0.9), value: playback.isQueuePresented)
     }
 }
 
@@ -302,172 +300,288 @@ private struct PlaybackKeyboardShortcutMonitor: NSViewRepresentable {
     }
 }
 
-private struct PlaybackQueuePanel: View {
+private struct PlaybackQueueSidebar: View {
     @ObservedObject var playback: PlaybackController
+    @State private var isHistoryExpanded = false
+
+    private let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-
-            Divider()
-                .opacity(0.3)
-
-            queueContent
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var header: some View {
-        HStack {
-            Text("Up Next")
-                .font(.headline)
-
-            Spacer()
-
-            if !playback.queue.isEmpty {
-                Text("\(playback.queue.count) songs")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        surface
+            .shadow(color: .black.opacity(0.10), radius: 18, x: 0, y: 6)
     }
 
     @ViewBuilder
-    private var queueContent: some View {
-        if playback.queue.isEmpty {
-            VStack(spacing: 12) {
-                Image(systemName: "list.bullet")
-                    .font(.system(size: 40))
-                    .foregroundStyle(.tertiary)
-
-                Text("No Queue")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
-
-                Text("Play songs from an album to build your queue")
-                    .font(.subheadline)
-                    .foregroundStyle(.tertiary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    private var surface: some View {
+        if #available(macOS 26.0, *) {
+            content
+                .glassEffect(.regular, in: shape)
         } else {
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(Array(playback.queue.enumerated()), id: \.element.id) { index, song in
-                        PlaybackQueueRow(
-                            song: song,
-                            index: index,
-                            isCurrent: playback.currentSong?.id == song.id,
-                            isPlaying: playback.isPlaying,
-                            play: {
-                                playback.playQueuedSong(song)
-                            },
-                            remove: {
-                                playback.removeFromQueue(song)
+            content
+                .background(.regularMaterial, in: shape)
+                .overlay(shape.strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
+        }
+    }
+
+    private var content: some View {
+        VStack(spacing: 0) {
+            header
+
+            if playback.queue.isEmpty {
+                emptyState
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        if let song = playback.currentSong {
+                            sectionTitle("Now Playing")
+                            NowPlayingQueueCard(song: song, isPlaying: playback.isPlaying)
+                                .padding(.bottom, 14)
+                        }
+
+                        if !upcoming.isEmpty {
+                            sectionTitle("Up Next", trailing: Text("\(upcoming.count) songs"))
+                            ForEach(upcoming) { song in
+                                row(song)
                             }
-                        )
+                        }
+
+                        if !history.isEmpty {
+                            historyToggle
+                                .padding(.top, upcoming.isEmpty ? 0 : 14)
+                            if isHistoryExpanded {
+                                ForEach(history) { song in
+                                    row(song)
+                                        .opacity(0.6)
+                                }
+                            }
+                        }
                     }
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 12)
                 }
-                .padding(.vertical, 8)
+                .scrollIndicators(.never)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipShape(shape)
+    }
+
+    private var header: some View {
+        HStack(alignment: .center) {
+            Text("Queue")
+                .font(.system(size: 17, weight: .bold))
+
+            Spacer()
+
+            Button {
+                playback.toggleQueueInspector()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 22, height: 22)
+                    .background(Color.primary.opacity(0.07), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .help(Text("Hide Queue"))
+            .accessibilityLabel(Text("Hide Queue"))
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 16)
+        .padding(.bottom, 10)
+    }
+
+    private func sectionTitle(_ title: LocalizedStringKey, trailing: Text? = nil) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+            Spacer()
+            if let trailing {
+                trailing
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.bottom, 6)
+    }
+
+    private var historyToggle: some View {
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
+                isHistoryExpanded.toggle()
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text("Played")
+                    .font(.system(size: 11, weight: .semibold))
+                    .textCase(.uppercase)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .bold))
+                    .rotationEffect(.degrees(isHistoryExpanded ? 90 : 0))
+                Spacer()
+                Text("\(history.count) songs")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+            }
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.bottom, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func row(_ song: Song) -> some View {
+        QueueSongRow(
+            song: song,
+            play: { playback.playQueuedSong(song) },
+            remove: {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
+                    playback.removeFromQueue(song)
+                }
+            }
+        )
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "music.note.list")
+                .font(.system(size: 30, weight: .light))
+                .foregroundStyle(.tertiary)
+            Text("No Queue")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.secondary)
+            Text("Play songs from an album to build your queue")
+                .font(.system(size: 12))
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.horizontal, 28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var currentIndex: Int? {
+        guard let currentSong = playback.currentSong else { return nil }
+        return playback.queue.firstIndex(where: { $0.id == currentSong.id })
+    }
+
+    private var upcoming: [Song] {
+        guard let currentIndex else { return playback.queue }
+        return Array(playback.queue[(currentIndex + 1)...])
+    }
+
+    private var history: [Song] {
+        guard let currentIndex else { return [] }
+        return Array(playback.queue[..<currentIndex])
     }
 }
 
-private struct PlaybackQueueRow: View {
+private struct NowPlayingQueueCard: View {
     let song: Song
-    let index: Int
-    let isCurrent: Bool
     let isPlaying: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            AlbumArtworkView(url: song.artworkURL, cornerRadius: 8)
+                .frame(width: 56, height: 56)
+                .shadow(color: .black.opacity(0.18), radius: 6, x: 0, y: 3)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(song.title)
+                    .font(.system(size: 14, weight: .semibold))
+                    .lineLimit(2)
+                Text(song.artist)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                if !song.albumTitle.isEmpty {
+                    Text(song.albumTitle)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "waveform")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(isPlaying ? AnyShapeStyle(YoruneStyle.accent) : AnyShapeStyle(.tertiary))
+                .symbolEffect(.variableColor.iterative, options: .repeating, isActive: isPlaying)
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.primary.opacity(0.05))
+        )
+    }
+}
+
+private struct QueueSongRow: View {
+    let song: Song
     let play: () -> Void
     let remove: () -> Void
 
     @State private var isHovering = false
 
     var body: some View {
-        Button(action: play) {
-            HStack(spacing: 12) {
-                leadingIndicator
-                    .frame(width: 24)
+        HStack(spacing: 10) {
+            AlbumArtworkView(url: song.artworkURL, cornerRadius: 5)
+                .frame(width: 36, height: 36)
 
-                AlbumArtworkView(url: song.artworkURL, cornerRadius: 4)
-                    .frame(width: 40, height: 40)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(song.title)
+                    .font(.system(size: 13, weight: .medium))
+                    .lineLimit(1)
+                Text(song.artist)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(song.title)
-                        .font(.system(size: 13, weight: isCurrent ? .semibold : .regular))
-                        .lineLimit(1)
-                        .foregroundStyle(isCurrent ? YoruneStyle.accent : Color.primary)
+            Spacer(minLength: 4)
 
-                    Text(song.artist)
-                        .font(.system(size: 11))
-                        .lineLimit(1)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer(minLength: 0)
-
+            ZStack(alignment: .trailing) {
                 Text(formatDuration(song.duration))
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
                     .monospacedDigit()
+                    .opacity(isHovering ? 0 : 1)
+
+                Button(action: remove) {
+                    Image(systemName: "minus.circle.fill")
+                        .font(.system(size: 14))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help(Text("Remove from Queue"))
+                .accessibilityLabel(Text("Remove from Queue"))
+                .opacity(isHovering ? 1 : 0)
+                .allowsHitTesting(isHovering)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(backgroundColor)
-            .contentShape(Rectangle())
+            .frame(minWidth: 32, alignment: .trailing)
         }
-        .buttonStyle(.plain)
-        .onHover { hovering in
-            isHovering = hovering
-        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(Color.primary.opacity(isHovering ? 0.06 : 0))
+        )
+        .contentShape(Rectangle())
+        .onTapGesture(perform: play)
+        .onHover { isHovering = $0 }
+        .animation(.easeOut(duration: 0.12), value: isHovering)
         .contextMenu {
             Button("Play Now", systemImage: "play.fill", action: play)
-
-            if !isCurrent {
-                Divider()
-                Button(role: .destructive) {
-                    remove()
-                } label: {
-                    Label("Remove from Queue", systemImage: "minus.circle")
-                }
+            Divider()
+            Button(role: .destructive, action: remove) {
+                Label("Remove from Queue", systemImage: "minus.circle")
             }
         }
-    }
-
-    @ViewBuilder
-    private var leadingIndicator: some View {
-        if isCurrent {
-            Image(systemName: "waveform")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(
-                    isPlaying
-                        ? AnyShapeStyle(YoruneStyle.accent)
-                        : AnyShapeStyle(.tertiary)
-                )
-                .symbolEffect(
-                    .variableColor.iterative,
-                    options: .repeating,
-                    isActive: isPlaying
-                )
-        } else {
-            Text("\(index + 1)")
-                .font(.system(size: 12))
-                .foregroundStyle(.tertiary)
-        }
-    }
-
-    private var backgroundColor: Color {
-        if isCurrent {
-            return YoruneStyle.accent.opacity(0.1)
-        }
-        if isHovering {
-            return Color.primary.opacity(0.05)
-        }
-        return .clear
     }
 
     private func formatDuration(_ seconds: Double) -> String {
