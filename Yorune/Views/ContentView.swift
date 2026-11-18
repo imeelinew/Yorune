@@ -527,8 +527,6 @@ private struct QueueSongRow: View {
     let play: () -> Void
     let remove: () -> Void
 
-    @State private var isHovering = false
-
     var body: some View {
         HStack(spacing: 10) {
             AlbumArtworkView(url: song.artworkURL, cornerRadius: 5)
@@ -546,37 +544,15 @@ private struct QueueSongRow: View {
 
             Spacer(minLength: 4)
 
-            ZStack(alignment: .trailing) {
-                Text(formatDuration(song.duration))
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-                    .monospacedDigit()
-                    .opacity(isHovering ? 0 : 1)
-
-                Button(action: remove) {
-                    Image(systemName: "minus.circle.fill")
-                        .font(.system(size: 14))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .help(Text("Remove from Queue"))
-                .accessibilityLabel(Text("Remove from Queue"))
-                .opacity(isHovering ? 1 : 0)
-                .allowsHitTesting(isHovering)
-            }
-            .frame(minWidth: 32, alignment: .trailing)
+            Text(formatDuration(song.duration))
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+                .monospacedDigit()
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(Color.primary.opacity(isHovering ? 0.06 : 0))
-        )
         .contentShape(Rectangle())
         .onTapGesture(perform: play)
-        .onHover { isHovering = $0 }
-        .animation(.easeOut(duration: 0.12), value: isHovering)
         .contextMenu {
             Button("Play Now", systemImage: "play.fill", action: play)
             Divider()
